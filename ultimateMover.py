@@ -13,12 +13,10 @@ class Player:
             successorBoards = []
             for move in legalMoves:
                 node.push(move)
-                successorBoards.append(node)
+                successorBoards.append(node.copy())
                 node.pop()
-
             return successorBoards
-
+        
         for newBoard in successors(board):
             print(newBoard)
             print('---------')
-

@@ -14,8 +14,7 @@ class Player:
     def move(self, board, t):
         AGENTS = 2
 
-        
-
+    
         def getSuccessors(curBoard, turn):
             # set the node to the current board we are on
             node = curBoard
@@ -70,6 +69,8 @@ class Player:
 
         vals = []
         for successor in getSuccessors(board, self.color):
+            # get the minimax of the layer after you to get correct depth
+            # start with the next agent, as you are starting 1 depth lower in the tree
             vals.append(evaluate(successor, 1, getNextAgent(self.color)))
         print(vals)
         actions = list(board.legal_moves)

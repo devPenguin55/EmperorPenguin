@@ -33,7 +33,7 @@ class Player:
     def move(self, board, t):
         AGENTS = 2
 
-    
+     
         def getSuccessors(curBoard, turn):
             # set the node to the current board we are on
             node = curBoard
@@ -57,42 +57,68 @@ class Player:
             return not agent 
 
         # standard minimax code
-        def evaluate(state, depth, agent):
+        def evaluate(state, depth, agent, a, b):
             if depth/AGENTS == wantedDepth:
                 return self.evaluationFunction(state, agent)
             else:
                 if agent == self.color:
-                    return maxVal(state, depth+1, agent)
+                    return maxVal(state, depth+1, agent, a, b)  
                 else:
-                    return minVal(state, depth+1, agent)
+                    return minVal(state, depth+1, agent, a, b)
 
-        def maxVal(state, depth, agent):
+        def maxVal(state, depth, agent, a, b):
             s = getSuccessors(state, agent)
             if not s:
-                return self.evaluationFunction(state)
-            val = float("-inf")
+                return self.evaluationFunction(state, agent)
+            
+            val = float('-inf')
             for successor in s:
-                val = max(val, evaluate(successor, depth, getNextAgent(agent)))
+                val = max(val, evaluate(successor, depth, getNextAgent(agent), a, b))
+                if val > b:
+                    return val
+                a = max(a, val)
             return val
         
-        def minVal(state, depth, agent):
+        def minVal(state, depth, agent, a, b):
             s = getSuccessors(state, agent)
             if not s:
-                return self.evaluationFunction(state)
-            val = float("inf")
+                return self.evaluationFunction(state, agent)
+            
+            val = float('inf')
             for successor in s:
-                val = min(val, evaluate(successor, depth, getNextAgent(agent)))
+                val = min(val, evaluate(successor, depth, getNextAgent(agent), a, b))
+                if val < a:
+                    return val
+                b = min(b, val)
             return val
+        
         
         wantedDepth = 2
-
+        # vals = []
+        # for successor in getSuccessors(board, self.color):
+        #     # get the minimax of the layer after you to get correct depth
+        #     # start with the next agent, as you are starting 1 depth lower in the tree
+        #     vals.append(evaluate(successor, 1, getNextAgent(self.color)))
+        # print(vals)
+        # print(board)
+        # print(self.color)
+        # actions = list(board.legal_moves)
+        # return actions[vals.index(max(vals))]
+    
         vals = []
-        for successor in getSuccessors(board, self.color):
+        a = float('-inf')
+        b = float('inf')
+        v = float('-inf')
+        actions = list(board.legal_moves)
+
+        for i in range(len(actions)):
+            successor = getSuccessors(board, self.color)[i]
             # get the minimax of the layer after you to get correct depth
             # start with the next agent, as you are starting 1 depth lower in the tree
-            vals.append(evaluate(successor, 1, getNextAgent(self.color)))
+            v = max(v, evaluate(successor, 1, 1, a, b))
+            vals.append(v)
+            a = max(a, v)
         print(vals)
         print(board)
         print(self.color)
-        actions = list(board.legal_moves)
-        return actions[vals.index(max(vals))]
+        return actions[vals.index(v)]

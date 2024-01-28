@@ -32,8 +32,12 @@ class Player:
 
     def move(self, board, t):
         AGENTS = 2
-
-     
+        testBoard = chess.Board()
+        m = testBoard.piece_map()
+        pieces = [c for c in m]
+        # print(testBoard.board_fen())
+        # print(testBoard.piece_at(pieces[0]))
+        # quit()
         def getSuccessors(curBoard, turn):
             # set the node to the current board we are on
             node = curBoard
@@ -93,17 +97,7 @@ class Player:
             return val
         
         
-        wantedDepth = 2
-        # vals = []
-        # for successor in getSuccessors(board, self.color):
-        #     # get the minimax of the layer after you to get correct depth
-        #     # start with the next agent, as you are starting 1 depth lower in the tree
-        #     vals.append(evaluate(successor, 1, getNextAgent(self.color)))
-        # print(vals)
-        # print(board)
-        # print(self.color)
-        # actions = list(board.legal_moves)
-        # return actions[vals.index(max(vals))]
+        wantedDepth = 1.5
     
         vals = []
         a = float('-inf')
@@ -111,13 +105,17 @@ class Player:
         v = float('-inf')
         actions = list(board.legal_moves)
 
+        children = getSuccessors(board, self.color)
         for i in range(len(actions)):
-            successor = getSuccessors(board, self.color)[i]
+            successor = children[i]
             # get the minimax of the layer after you to get correct depth
             # start with the next agent, as you are starting 1 depth lower in the tree
-            v = max(v, evaluate(successor, 1, 1, a, b))
+
+            # with self.color it works?
+            v = max(v, evaluate(successor, 1, getNextAgent(self.color), a, b))
             vals.append(v)
             a = max(a, v)
+        
         print(vals)
         print(board)
         print(self.color)

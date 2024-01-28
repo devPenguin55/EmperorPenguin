@@ -42,7 +42,7 @@ class Player:
             if depth/AGENTS == wantedDepth:
                 return self.evaluationFunction(state)
             else:
-                if agent == 0:
+                if agent == self.color:
                     return maxVal(state, depth+1, agent)
                 else:
                     return minVal(state, depth+1, agent)

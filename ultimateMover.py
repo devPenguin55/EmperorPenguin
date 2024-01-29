@@ -108,19 +108,60 @@ class Player:
             # True -> False, False -> True
             material += value * (pieceCount(piece, color)-pieceCount(piece, not color))
 
+        m = board.piece_map()
+        flattenedBoard = self.flattenBoard(board)
 
-        return material
+        mappedPieces = {
+            'p':self.pawns,
+            'n':self.knights,
+            'b':self.bishops,
+            'r':self.rooks,
+            'q':self.queen,
+            'k':self.kingMiddleGame # fix later
+        }
+
+        pieceIndeces = [c for c in m]
+        locationScore = 0
+        for index in pieceIndeces:
+            currentPiece = flattenedBoard[index].lower()
+            if currentPiece != '.':
+                table = mappedPieces[currentPiece]
+                locationScore += table[index]
+        return material + locationScore
     
-    
+    def flattenBoard(self, board):
+        def makeMatrix(board): #type(board) == chess.Board()
+            '''
+            https://stackoverflow.com/questions/55876336/is-there-a-way-to-convert-a-python-chess-board-into-a-list-of-integers
+            this is where this function came from
+            '''
+            pgn = board.epd()
+            foo = []  #Final board
+            pieces = pgn.split(" ", 1)[0]
+            rows = pieces.split("/")
+            for row in rows:
+                foo2 = []  #This is the row I make
+                for thing in row:
+                    if thing.isdigit():
+                        for i in range(0, int(thing)):
+                            foo2.append('.')
+                    else:
+                        foo2.append(thing)
+                foo.append(foo2)
+            return foo
+        
+        boardAsList = makeMatrix(board)
+        x = []
+        for row in boardAsList:
+            x += row
+        boardAsList = x
+        return boardAsList
 
     def move(self, board, t):
         AGENTS = 2
         testBoard = chess.Board()
-        m = testBoard.piece_map()
-        pieces = [c for c in m]
-        print(pieces)
-        print(testBoard.piece_at(pieces[0]))
         quit()
+        
         def getSuccessors(curBoard, turn):
             # set the node to the current board we are on
             node = curBoard
@@ -180,7 +221,7 @@ class Player:
             return val
         
         
-        wantedDepth = 1.5
+        wantedDepth = 1
     
         vals = []
         a = float('-inf')
@@ -194,7 +235,6 @@ class Player:
             # get the minimax of the layer after you to get correct depth
             # start with the next agent, as you are starting 1 depth lower in the tree
 
-            # with self.color it works?
             v = max(v, evaluate(successor, 1, getNextAgent(self.color), a, b))
             vals.append(v)
             a = max(a, v)

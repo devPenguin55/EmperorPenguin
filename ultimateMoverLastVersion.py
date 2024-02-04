@@ -6,7 +6,7 @@ import time as t
 class Player:
     
     def __init__(self, board, color, t):
-        self.BENCHMARK =  False
+        self.BENCHMARK = False
         self.color = color
         self.pawns = [
             0,  0,  0,  0,  0,  0,  0,  0,
@@ -118,7 +118,7 @@ class Player:
                  chess.PAWN: 100,
              }
         self.transpositionTable = {}
-        self.moverOrderTable = {}
+
     
     def evaluationFunction(self, board):
         color = self.color
@@ -217,55 +217,12 @@ class Player:
         import time as t
 
         # handle book moves
-        if self.bookMoveIndex < len(self.bookMoves) and self.bookMoveIndex < 7:
+        if self.bookMoveIndex < len(self.bookMoves) and self.bookMoveIndex < 4:
             bookMove = self.bookMoves[self.bookMoveIndex]
             self.bookMoveIndex += 1
             return chess.Move.from_uci(bookMove)
 
-        # def orderMoves(state, moves, agent):
-        #     from chess import polyglot
-        #     hashed = polyglot.zobrist_hash(board)
-        #     if hashed in self.moverOrderTable:
-        #         return self.moverOrderTable[hashed]
-        #     else:
-        #         statePromoted = state.promoted
-        #         moveOrdering = []
-        #         for move in moves:
-        #             moveEstimate = 0
 
-        #             if state.gives_check(move):
-        #                 moveEstimate += 10
-        #             if state.is_into_check(move):
-        #                 moveEstimate -= 25
-        #             state.push(move)
-        #             if state.promoted > statePromoted:
-        #                 moveEstimate += 30
-        #             if state.is_stalemate():
-        #                 moveEstimate -= 40
-        #             if state.is_checkmate():
-        #                 if state.turn == agent:
-        #                     moveEstimate -= 1000
-        #                 else:
-        #                     moveEstimate += 1000
-                    
-        #             moveOrdering.append((move, moveEstimate))
-        #             state.pop()
-                
-        #         if all(score == 0 for move, score in moveOrdering):
-        #             # if the score of each move was 0, then there's nothing to sort
-        #             # skip sorting and just return what we have
-        #             return moves
-        #         moveOrdering.sort(reverse=True, key=lambda x: x[1])
-        #         sortedMoves = [x[0] for x in moveOrdering]
-        #         self.moverOrderTable[hashed] = sortedMoves 
-        #         return sortedMoves
-        
-        # s = list(board.legal_moves)
-        # orderedMoves = orderMoves(board, s, self.color)    
-        # print(s)
-        # print(orderedMoves)   
-        # quit()
-        
         global positionsEvaluated
         positionsEvaluated = 0
 
@@ -278,95 +235,70 @@ class Player:
             if agent == self.color:
                 best = float('-inf')
                 legalMoves = list(state.legal_moves)
-                # legalMoves = orderMoves(state, legalMoves, agent) 
+
                 for move in legalMoves:
                     positionsEvaluated += 1
 
                     state.push(move)
                     val = minimax(state, depth-1, not agent, a, b)
-                    state.pop()
 
                     best = max(best, val)
 
                     a = max(a, val)
 
-                    
+                    state.pop()
                     if b <= a:
                         break
                     
             else:
                 best = float('inf')
                 legalMoves = list(state.legal_moves)
-                # legalMoves = orderMoves(state, legalMoves, agent) 
+
                 for move in legalMoves:
                     positionsEvaluated += 1
 
                     state.push(move)
                     val = minimax(state, depth-1, not agent, a, b)
-                    state.pop()
 
                     best = min(best, val)
 
                     b = min(b, val)
 
-                    
+                    state.pop()
                     if b <= a:
                         break
  
             return best
         
 
-
+        startTime = t.time()
+        
+        wantedDepth = 3
+        
         # ply x
         # meaning it does 2 moves ahead - one for white, one for black
         # do 2*x to get the full depth look ahead
 
-        def searchFromRoot(wantedDepth):
-            global positionsEvaluated
-            positionsEvaluated = 0
-            bestVal = float('-inf')
-            legal = list(board.legal_moves)
+        bestVal = float('-inf')
+        legal = list(board.legal_moves)
 
-            bestMove = legal[0]
+        bestMove = legal[0]
 
-            a, b = float('-inf'), float('inf')
+        a, b = float('-inf'), float('inf')
 
-            for move in legal:
-                board.push(move)
-                val = minimax(board, wantedDepth-1, not self.color, a, b)
-                board.pop()
-
-                if val > bestVal:
-                    bestVal = val
-                    bestMove = move
-                
-                a = max(a, val)
-                if b <= a:
-                    break
-            return bestMove
-        
-        def iterativeDeepening(timeAllocation, depthLimit):
-            curDepth = 1
-            startedTime = t.time()
-
-            bestMoveFound = None
-            lastTime = t.time()
-            while t.time()-startedTime < timeAllocation and curDepth <= depthLimit:
-                
-                bestMoveFound = searchFromRoot(curDepth)
-                print(f'   |___ Iterative Deepening - depth {curDepth}, {bestMoveFound}, took {t.time()-lastTime}s, cum {t.time()-startedTime}s')
-                lastTime = t.time()
-                curDepth += 1
-
-            return bestMoveFound
-
-        startTime = t.time()
-        print('Latest Version')  
-        # given that we have x time left, allocate at most x secs, and have y max depth
-        bestMove = iterativeDeepening(timeAllocation = 3, depthLimit = 3)
-
-                  
-        print(f'        |___ {bestMove}, took {"{:,}".format(t.time()-startTime)} secs, {"{:,}".format(positionsEvaluated)} positions evaluated')
+        for move in legal:
+            board.push(move)
+            val = minimax(board, wantedDepth-1, not self.color, a, b)
+            if val > bestVal:
+                bestVal = val
+                bestMove = move
+            board.pop()
+            a = max(a, val)
+            if b <= a:
+                break
+        # print(f'searching at depth {wantedDepth}')    
+        print('outdated version')
+        print(f'   |___ Alpha Beta - {bestMove}, depth {wantedDepth}, took {"{:,}".format(t.time()-startTime)} secs, {"{:,}".format(positionsEvaluated)} positions evaluated')        
         print()
         return bestMove
         

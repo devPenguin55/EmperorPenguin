@@ -89,25 +89,6 @@ class Player:
             self.kingMiddleGame.reverse()
             self.kingEndGame.reverse()
 
-        # read in the respective book move files, read in the lines, then pick a random line
-        # it will look like: d4 Nf3 c4 g3 Bg2 Nc3 O-O Re1 e4 d5 exd5 Bf4 Nb5 Qxd8 gxf4 Ng5 Nd6 Kxg2 Kg3 Nxb7\n
-        # therefore you must split on the space and remove the last 2 chars
-        if self.color == True:
-            moves = r.choice(open('whiteBook.txt', "r").readlines())
-            self.bookMoves = moves[:-1].split(" ")
-
-            if self.BENCHMARK:
-                self.bookMoves = ['d2d4', 'g2g3', 'f1g2', 'g1h3']
-
-            print(' '.join(self.bookMoves) + " //// are whites book moves")
-        else:
-            moves = r.choice(open('blackBook.txt', "r").readlines())
-            self.bookMoves = moves[:-1].split(" ")
-
-            if self.BENCHMARK:
-                self.bookMoves = ['d7d5', 'e7e5']
-
-            print(' '.join(self.bookMoves) + " //// are blacks book moves")
         self.bookMoveIndex = 0
         self.pieces = {
                  chess.KING: 20_000,
@@ -117,13 +98,25 @@ class Player:
                  chess.KNIGHT: 320,
                  chess.PAWN: 100,
              }
+
         self.transpositionTable = {}
         self.moverOrderTable = {}
-    
+    def bookMove(self, state):
+        # state -> board
+        import chess.polyglot
+        with chess.polyglot.open_reader("bookMoves.bin") as reader:
+            entries = reader.find_all(state)
+            best = False
+            for entry in reader.find_all(state):
+                best = entry.move
+                return best
+                # print(entry.move, entry.weight, entry.learn)
+            return best
     def evaluationFunction(self, board):
         color = self.color
         from chess import polyglot
         hashed = polyglot.zobrist_hash(board)
+
         if hashed in self.transpositionTable:
             return self.transpositionTable[hashed]
         else:
@@ -215,12 +208,12 @@ class Player:
 
     def move(self, board, timeLeft):
         import time as t
-
+        print('latest')
         # handle book moves
-        if self.bookMoveIndex < len(self.bookMoves) and self.bookMoveIndex < 7:
-            bookMove = self.bookMoves[self.bookMoveIndex]
-            self.bookMoveIndex += 1
-            return chess.Move.from_uci(bookMove)
+        move = self.bookMove(board)
+        if move:
+            return move
+
 
         # def orderMoves(state, moves, agent):
         #     from chess import polyglot

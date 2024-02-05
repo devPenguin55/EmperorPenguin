@@ -3,7 +3,7 @@ import chess.pgn
 import time
 import ultimateMover as player1
 # import randomMover as player2
-import ultimateMoverLastVersion as player2
+import ultimateMover as player2
 
 # for benchmarking
 import cProfile
@@ -66,7 +66,7 @@ while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
 if not legal_move:
     if board.turn == chess.WHITE:
         print("Black wins - illegal move by white")
-    else:
+    else: 
         print("White wins - illegal move by black")
 elif p1_time <= 0:
     print("Black wins on time")

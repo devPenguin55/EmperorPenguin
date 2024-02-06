@@ -208,10 +208,10 @@ class Player:
 
     def move(self, board, timeLeft):
         import time as t
-        print('latest')
         # handle book moves
         move = self.bookMove(board)
         if move:
+            print(f'Book move - {move}')
             return move
 
 

@@ -1,12 +1,25 @@
+import cProfile
 import chess
 import chess.pgn
 import time
 import ultimateMover as player1
-# import randomMover as player2
 import ultimateMover as player2
+from stockfish import Stockfish
+
+stockfishPath = 'stockfish-windows-x86-64-avx2.exe'
+STOCKFISH = True
+
+stockfish = Stockfish(path=stockfishPath)
+
+
+def stockfishMove(board, stockfish, timeLimit):
+    stockfish.set_fen_position(board.fen())
+    moveInfo = stockfish.get_best_move_time(timeLimit)
+    bestMove = moveInfo
+    return chess.Move.from_uci(bestMove)
+
 
 # for benchmarking
-import cProfile
 pr = cProfile.Profile()
 pr.enable()
 # def getSuccessors(curBoard, turn):
@@ -37,10 +50,11 @@ p1 = player1.Player(board1, chess.WHITE, p1_time)
 end = time.time()
 p1_time -= end-start
 
-start = time.time()
-p2 = player2.Player(board2, chess.BLACK, p2_time)
-end = time.time()
-p2_time -= end-start
+if not STOCKFISH:
+    start = time.time()
+    p2 = player2.Player(board2, chess.BLACK, p2_time)
+    end = time.time()
+    p2_time -= end-start
 
 legal_move = True
 
@@ -52,10 +66,17 @@ while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
         end = time.time()
         p1_time -= end-start
     else:
-        start = time.time()
-        move = p2.move(board_copy, p2_time)
-        end = time.time()
-        p2_time -= end-start
+        if not STOCKFISH:
+            start = time.time()
+            move = p2.move(board_copy, p2_time)
+            end = time.time()
+            p2_time -= end-start
+        else:
+            start = time.time()
+            move = stockfishMove(board_copy, stockfish, p2_time)
+            end = time.time()
+            p2_time -= end-start
+            print(f'\nStockfish -> {move}\n')
 
     if move in board.legal_moves:
         board.push(move)
@@ -66,7 +87,7 @@ while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
 if not legal_move:
     if board.turn == chess.WHITE:
         print("Black wins - illegal move by white")
-    else: 
+    else:
         print("White wins - illegal move by black")
 elif p1_time <= 0:
     print("Black wins on time")

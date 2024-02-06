@@ -4,9 +4,9 @@ import time as t
 
 
 class Player:
-    
+
     def __init__(self, board, color, t):
-        self.BENCHMARK =  False
+        self.BENCHMARK = False
         self.color = color
         self.pawns = [
             0,  0,  0,  0,  0,  0,  0,  0,
@@ -91,27 +91,38 @@ class Player:
 
         self.bookMoveIndex = 0
         self.pieces = {
-                 chess.KING: 20_000,
-                 chess.QUEEN: 900,
-                 chess.ROOK: 500,
-                 chess.BISHOP: 330,
-                 chess.KNIGHT: 320,
-                 chess.PAWN: 100,
-             }
+            chess.KING: 20_000,
+            chess.QUEEN: 900,
+            chess.ROOK: 500,
+            chess.BISHOP: 330,
+            chess.KNIGHT: 320,
+            chess.PAWN: 100,
+        }
 
         self.transpositionTable = {}
-        self.moverOrderTable = {}
+
     def bookMove(self, state):
         # state -> board
         import chess.polyglot
         with chess.polyglot.open_reader("bookMoves.bin") as reader:
             entries = reader.find_all(state)
             best = False
-            for entry in reader.find_all(state):
+            for entry in entries:
                 best = entry.move
                 return best
                 # print(entry.move, entry.weight, entry.learn)
             return best
+
+    def randomBookMove(self, state):
+        # state -> board
+        import chess.polyglot
+        with chess.polyglot.open_reader("bookMoves.bin") as reader:
+            entries = reader.find_all(state)
+            best = []
+            for entry in entries:
+                best.append(entry.move)
+            return r.choice(best) if best else False
+
     def evaluationFunction(self, board):
         color = self.color
         from chess import polyglot
@@ -120,7 +131,6 @@ class Player:
         if hashed in self.transpositionTable:
             return self.transpositionTable[hashed]
         else:
-            
 
             def pieceCount(piece, color):
                 # get amt of pieces on the board that are a certain color and type
@@ -132,15 +142,15 @@ class Player:
                 # therefore, to get the next agent, just do not agent
                 # True -> False, False -> True
                 material += self.pieces[piece] * (pieceCount(piece, color) -
-                                             pieceCount(piece, not color))
+                                                  pieceCount(piece, not color))
 
             m = board.piece_map()
             flattenedBoard = self.flattenBoard(board)
 
             oppPieces = 0
             for i in flattenedBoard:
-                # if the piece is black and u are white, then 
-                # negate ur color to black, and it with 
+                # if the piece is black and u are white, then
+                # negate ur color to black, and it with
                 if i != '.':
                     if self.color == True and i == i.lower():
                         # u are white, piece is black
@@ -154,7 +164,9 @@ class Player:
                 kingGame = self.kingMiddleGame
             else:
                 # move king close to other king to get checkmate in endgame
-                kingDist = 500*(1/(chess.square_distance(board.king(self.color), board.king(not self.color))))
+                kingDist = 500 * \
+                    (1/(chess.square_distance(board.king(self.color),
+                     board.king(not self.color))))
                 kingGame = self.kingEndGame
 
             mappedPieces = {
@@ -209,11 +221,14 @@ class Player:
     def move(self, board, timeLeft):
         import time as t
         # handle book moves
-        move = self.bookMove(board)
+        if self.bookMoveIndex != 0:
+            move = self.bookMove(board)
+        else:
+            move = self.randomBookMove(board)
         if move:
             print(f'Book move - {move}')
+            self.bookMoveIndex += 1
             return move
-
 
         # def orderMoves(state, moves, agent):
         #     from chess import polyglot
@@ -240,25 +255,25 @@ class Player:
         #                     moveEstimate -= 1000
         #                 else:
         #                     moveEstimate += 1000
-                    
+
         #             moveOrdering.append((move, moveEstimate))
         #             state.pop()
-                
+
         #         if all(score == 0 for move, score in moveOrdering):
         #             # if the score of each move was 0, then there's nothing to sort
         #             # skip sorting and just return what we have
         #             return moves
         #         moveOrdering.sort(reverse=True, key=lambda x: x[1])
         #         sortedMoves = [x[0] for x in moveOrdering]
-        #         self.moverOrderTable[hashed] = sortedMoves 
+        #         self.moverOrderTable[hashed] = sortedMoves
         #         return sortedMoves
-        
+
         # s = list(board.legal_moves)
-        # orderedMoves = orderMoves(board, s, self.color)    
+        # orderedMoves = orderMoves(board, s, self.color)
         # print(s)
-        # print(orderedMoves)   
+        # print(orderedMoves)
         # quit()
-        
+
         global positionsEvaluated
         positionsEvaluated = 0
 
@@ -267,11 +282,11 @@ class Player:
             if depth == 0 or state.is_game_over():
                 positionsEvaluated += 1
                 return self.evaluationFunction(board)
-            
+
             if agent == self.color:
                 best = float('-inf')
                 legalMoves = list(state.legal_moves)
-                # legalMoves = orderMoves(state, legalMoves, agent) 
+                # legalMoves = orderMoves(state, legalMoves, agent)
                 for move in legalMoves:
                     positionsEvaluated += 1
 
@@ -283,14 +298,13 @@ class Player:
 
                     a = max(a, val)
 
-                    
                     if b <= a:
                         break
-                    
+
             else:
                 best = float('inf')
                 legalMoves = list(state.legal_moves)
-                # legalMoves = orderMoves(state, legalMoves, agent) 
+                # legalMoves = orderMoves(state, legalMoves, agent)
                 for move in legalMoves:
                     positionsEvaluated += 1
 
@@ -302,13 +316,10 @@ class Player:
 
                     b = min(b, val)
 
-                    
                     if b <= a:
                         break
- 
-            return best
-        
 
+            return best
 
         # ply x
         # meaning it does 2 moves ahead - one for white, one for black
@@ -332,12 +343,12 @@ class Player:
                 if val > bestVal:
                     bestVal = val
                     bestMove = move
-                
+
                 a = max(a, val)
                 if b <= a:
                     break
             return bestMove
-        
+
         def iterativeDeepening(timeAllocation, depthLimit):
             curDepth = 1
             startedTime = t.time()
@@ -345,21 +356,21 @@ class Player:
             bestMoveFound = None
             lastTime = t.time()
             while t.time()-startedTime < timeAllocation and curDepth <= depthLimit:
-                
+
                 bestMoveFound = searchFromRoot(curDepth)
-                print(f'   |___ Iterative Deepening - depth {curDepth}, {bestMoveFound}, took {t.time()-lastTime}s, cum {t.time()-startedTime}s')
+                print(
+                    f'   |___ Iterative Deepening - depth {curDepth}, {bestMoveFound}, took {t.time()-lastTime}s, cum {t.time()-startedTime}s')
                 lastTime = t.time()
                 curDepth += 1
 
             return bestMoveFound
 
         startTime = t.time()
-        print('Latest Version')  
+        print('Latest Version')
         # given that we have x time left, allocate at most x secs, and have y max depth
-        bestMove = iterativeDeepening(timeAllocation = 3, depthLimit = 3)
+        bestMove = iterativeDeepening(timeAllocation=3, depthLimit=3)
 
-                  
-        print(f'        |___ {bestMove}, took {"{:,}".format(t.time()-startTime)} secs, {"{:,}".format(positionsEvaluated)} positions evaluated')
+        print(
+            f'        |___ {bestMove}, took {"{:,}".format(t.time()-startTime)} secs, {"{:,}".format(positionsEvaluated)} positions evaluated')
         print()
         return bestMove
-        

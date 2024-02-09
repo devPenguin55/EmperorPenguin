@@ -98,7 +98,7 @@ class Player:
             chess.KNIGHT: 320,
             chess.PAWN: 100,
         }
-
+        self.moveOrderTable = {}
         self.transpositionTable = {}
 
     def bookMove(self, state):
@@ -121,6 +121,7 @@ class Player:
             best = []
             for entry in entries:
                 best.append(entry.move)
+            return best[0]
             return r.choice(best) if best else False
 
     def evaluationFunction(self, board):
@@ -230,43 +231,43 @@ class Player:
             self.bookMoveIndex += 1
             return move
 
-        # def orderMoves(state, moves, agent):
-        #     from chess import polyglot
-        #     hashed = polyglot.zobrist_hash(board)
-        #     if hashed in self.moverOrderTable:
-        #         return self.moverOrderTable[hashed]
-        #     else:
-        #         statePromoted = state.promoted
-        #         moveOrdering = []
-        #         for move in moves:
-        #             moveEstimate = 0
+        def orderMoves(state, moves, agent):
+            from chess import polyglot
+            hashed = polyglot.zobrist_hash(board)
+            if hashed in self.moveOrderTable:
+                return self.moveOrderTable[hashed]
+            else:
+                statePromoted = state.promoted
+                moveOrdering = []
+                for move in moves:
+                    moveEstimate = 0
 
-        #             if state.gives_check(move):
-        #                 moveEstimate += 10
-        #             if state.is_into_check(move):
-        #                 moveEstimate -= 25
-        #             state.push(move)
-        #             if state.promoted > statePromoted:
-        #                 moveEstimate += 30
-        #             if state.is_stalemate():
-        #                 moveEstimate -= 40
-        #             if state.is_checkmate():
-        #                 if state.turn == agent:
-        #                     moveEstimate -= 1000
-        #                 else:
-        #                     moveEstimate += 1000
+                    if state.gives_check(move):
+                        moveEstimate += 10
+                    if state.is_into_check(move):
+                        moveEstimate -= 25
+                    state.push(move)
+                    if state.promoted > statePromoted:
+                        moveEstimate += 30
+                    if state.is_stalemate():
+                        moveEstimate -= 40
+                    if state.is_checkmate():
+                        if state.turn == agent:
+                            moveEstimate -= 1000
+                        else:
+                            moveEstimate += 1000
 
-        #             moveOrdering.append((move, moveEstimate))
-        #             state.pop()
+                    moveOrdering.append((move, moveEstimate))
+                    state.pop()
 
-        #         if all(score == 0 for move, score in moveOrdering):
-        #             # if the score of each move was 0, then there's nothing to sort
-        #             # skip sorting and just return what we have
-        #             return moves
-        #         moveOrdering.sort(reverse=True, key=lambda x: x[1])
-        #         sortedMoves = [x[0] for x in moveOrdering]
-        #         self.moverOrderTable[hashed] = sortedMoves
-        #         return sortedMoves
+                if all(score == 0 for move, score in moveOrdering):
+                    # if the score of each move was 0, then there's nothing to sort
+                    # skip sorting and just return what we have
+                    return moves
+                moveOrdering.sort(reverse=True, key=lambda x: x[1])
+                sortedMoves = [x[0] for x in moveOrdering]
+                self.moveOrderTable[hashed] = sortedMoves
+                return sortedMoves
 
         # s = list(board.legal_moves)
         # orderedMoves = orderMoves(board, s, self.color)
@@ -288,7 +289,7 @@ class Player:
 
             if agent == self.color:
                 best = float('-inf')
-                legalMoves = list(state.legal_moves)
+                legalMoves = state.legal_moves
                 # legalMoves = orderMoves(state, legalMoves, agent)
                 for move in legalMoves:
                     positionsEvaluated += 1
@@ -306,7 +307,7 @@ class Player:
 
             else:
                 best = float('inf')
-                legalMoves = list(state.legal_moves)
+                legalMoves = state.legal_moves
                 # legalMoves = orderMoves(state, legalMoves, agent)
                 for move in legalMoves:
                     positionsEvaluated += 1
@@ -332,12 +333,11 @@ class Player:
             global positionsEvaluated
             positionsEvaluated = 0
             bestVal = float('-inf')
-            legal = list(board.legal_moves)
-            bestMove = legal[0]
+            bestMove = None
 
             a, b = float('-inf'), float('inf')
 
-            for move in legal:
+            for move in board.legal_moves:
                 board.push(move)
                 val = minimax(board, wantedDepth-1, not self.color, a, b, st, endTime)
                 board.pop()

@@ -1,3 +1,5 @@
+import io
+import chess.engine
 import cProfile
 import chess
 import chess.pgn
@@ -22,22 +24,7 @@ def stockfishMove(board, stockfish, timeLimit):
 # for benchmarking
 pr = cProfile.Profile()
 pr.enable()
-# def getSuccessors(curBoard, turn):
-#     # set the node to the current board we are on
-#     node = curBoard
 
-#     # have the node's turn be whatever turn we want
-#     node.turn = turn
-
-#     # get the legal moves and generate a list of boards with these moves
-#     legalMoves = list(node.legal_moves)
-#     successorBoards = []
-#     for move in legalMoves:
-#         node.push(move)
-#         successorBoards.append(node)
-#         node.pop()
-#     # print(successorBoards)
-#     return successorBoards
 game = chess.pgn.Game()
 node = game
 board = chess.Board()
@@ -57,7 +44,7 @@ if not STOCKFISH:
     p2_time -= end-start
 
 legal_move = True
-
+movesDone = 0
 while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
     board_copy = board.copy()
     if board.turn == chess.WHITE:
@@ -81,9 +68,10 @@ while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
     if move in board.legal_moves:
         board.push(move)
         node = node.add_variation(move)
+        movesDone += 1
     else:
         legal_move = False
-
+    print(f'\n{str(game.mainline_moves())}\n\n')
 if not legal_move:
     if board.turn == chess.WHITE:
         print("Black wins - illegal move by white")
@@ -109,9 +97,43 @@ elif board.is_seventyfive_moves():
 elif board.is_fivefold_repetition():
     print("Draw - position repeated 5 times")
 print(game)
+print(f'Survived {movesDone} moves')
 
 pr.disable()
+
 # import time as t
 # print('Stats coming in 10 seconds')
 # t.sleep(10)
 # pr.print_stats(sort='cumulative')
+
+
+def whiteAccuracyFromPgn(game):
+    board = chess.Board()
+
+    enginePath = stockfishPath
+    engine = chess.engine.SimpleEngine.popen_uci(enginePath)
+
+    totalMoves = 0
+    accurateMoves = 0
+
+    for move in game.mainline_moves():
+        totalMoves += 1
+        evaluation = engine.analyse(board, chess.engine.Limit(time=0.1))
+        actualResult = game.headers["Result"]
+
+        # see if white's move was accurate
+        try:
+            if (evaluation["score"].relative.score() > 0) == ("1-0" in actualResult):
+                accurateMoves += 1
+        except:
+            pass
+
+        board.push(move)
+
+    # accuracy
+    whiteAccuracy = 100 - (accurateMoves / totalMoves) * 100 
+    return whiteAccuracy
+
+print('Assembling accuracy...')
+whiteAccuracy = whiteAccuracyFromPgn(game)
+print(f"White player (Bot) weird accuracy (dont trust): {whiteAccuracy:.2f}%")

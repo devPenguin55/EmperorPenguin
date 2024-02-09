@@ -186,7 +186,7 @@ class Player:
                     table = mappedPieces[currentPiece]
                     locationScore += table[index]
 
-            score = material*1.2 + locationScore*2 + kingDist*5
+            score = material*5 + locationScore*1.1 + kingDist*5
             self.transpositionTable[hashed] = score
             return score
 
@@ -277,7 +277,10 @@ class Player:
         global positionsEvaluated
         positionsEvaluated = 0
 
-        def minimax(state, depth, agent, a, b):
+        def minimax(state, depth, agent, a, b, startTime, maxTime):
+            if t.time()-startTime > maxTime:
+                # if we have exceeded the time given, raise an error
+                1/0
             global positionsEvaluated
             if depth == 0 or state.is_game_over():
                 positionsEvaluated += 1
@@ -291,7 +294,7 @@ class Player:
                     positionsEvaluated += 1
 
                     state.push(move)
-                    val = minimax(state, depth-1, not agent, a, b)
+                    val = minimax(state, depth-1, not agent, a, b, startTime, maxTime)
                     state.pop()
 
                     best = max(best, val)
@@ -309,7 +312,7 @@ class Player:
                     positionsEvaluated += 1
 
                     state.push(move)
-                    val = minimax(state, depth-1, not agent, a, b)
+                    val = minimax(state, depth-1, not agent, a, b, startTime, maxTime)
                     state.pop()
 
                     best = min(best, val)
@@ -325,19 +328,18 @@ class Player:
         # meaning it does 2 moves ahead - one for white, one for black
         # do 2*x to get the full depth look ahead
 
-        def searchFromRoot(wantedDepth):
+        def searchFromRoot(wantedDepth, st, endTime):
             global positionsEvaluated
             positionsEvaluated = 0
             bestVal = float('-inf')
             legal = list(board.legal_moves)
-
             bestMove = legal[0]
 
             a, b = float('-inf'), float('inf')
 
             for move in legal:
                 board.push(move)
-                val = minimax(board, wantedDepth-1, not self.color, a, b)
+                val = minimax(board, wantedDepth-1, not self.color, a, b, st, endTime)
                 board.pop()
 
                 if val > bestVal:
@@ -356,19 +358,23 @@ class Player:
             bestMoveFound = None
             lastTime = t.time()
             while t.time()-startedTime < timeAllocation and curDepth <= depthLimit:
-
-                bestMoveFound = searchFromRoot(curDepth)
-                print(
+                try:
+                    bestMoveFound = searchFromRoot(curDepth, startedTime, timeAllocation)
+                    print(
                     f'   |___ Iterative Deepening - depth {curDepth}, {bestMoveFound}, took {t.time()-lastTime}s, cum {t.time()-startedTime}s')
-                lastTime = t.time()
-                curDepth += 1
+                    lastTime = t.time()
+                    curDepth += 1
+                except ZeroDivisionError:
+                    # when the zero division error traces down to here
+                    # we have exceeded time limit, so halt the search where it is, and break out of loop
+                    break
 
             return bestMoveFound
 
         startTime = t.time()
         print('Latest Version')
-        # given that we have x time left, allocate at most x secs, and have y max depth
-        bestMove = iterativeDeepening(timeAllocation=3, depthLimit=3)
+        # given that we have x time left, allocate at most x secs, and have at most y depth
+        bestMove = iterativeDeepening(timeAllocation=5, depthLimit=10)
 
         print(
             f'        |___ {bestMove}, took {"{:,}".format(t.time()-startTime)} secs, {"{:,}".format(positionsEvaluated)} positions evaluated')

@@ -2,9 +2,38 @@ import random as r
 import chess
 import time as t
 
+# simple memory handler that stores data from the transposition tables into memory
+class memoryHandler():
+    def __init__(self, filePath):
+        self.f = open(filePath, 'r+')
+        self.f.seek(0)
+
+    def read(self):
+        self.f.seek(0)
+        return self.f.read()
+    
+    def entry(self, table):
+        data = self.read().split('\n')
+        for i, hash in enumerate(table):
+            evaluation = table[hash]
+            # if f'{hash}:{evaluation}' not in data: # assume that where its placed, it wont add the same things.
+            self.f.write(f'{hash}:{evaluation}')
+            self.f.write('\n')
+            # print(f'{i}/{len(table)}')
+
+    def initialize(self):
+        table = {}
+        data = self.read().split('\n')
+        for line in data:
+            if line:
+                key, val = line.split(':')
+                table[int(key)] = float(val)
+        
+        return table
+
+memory = memoryHandler('transpositionTable.txt')
 
 class Player:
-
     def __init__(self, board, color, t):
         self.BENCHMARK = False
         self.color = color
@@ -99,8 +128,9 @@ class Player:
             chess.PAWN: 100,
         }
         self.moveOrderTable = {}
-        self.transpositionTable = {}
-
+        global MemoryError
+        self.transpositionTable = memory.initialize()
+        # print(self.transpositionTable)
     def bookMove(self, state):
         # state -> board
         import chess.polyglot
@@ -125,6 +155,7 @@ class Player:
             return r.choice(best) if best else False
 
     def evaluationFunction(self, board):
+        # when working on the evaluation function, clear the transposition table first, as to not mess with the evals and the board
         color = self.color
         from chess import polyglot
         hashed = polyglot.zobrist_hash(board)
@@ -189,6 +220,8 @@ class Player:
 
             score = material*5 + locationScore*1.1 + kingDist*5
             self.transpositionTable[hashed] = score
+            global memory
+            memory.entry({hashed:score})
             return score
 
     def flattenBoard(self, board):
@@ -260,7 +293,7 @@ class Player:
                     moveOrdering.append((move, moveEstimate))
                     state.pop()
 
-                if all(score == 0 for move, score in moveOrdering):
+                if all(score == 0 for _, score in moveOrdering):
                     # if the score of each move was 0, then there's nothing to sort
                     # skip sorting and just return what we have
                     return moves
@@ -268,12 +301,6 @@ class Player:
                 sortedMoves = [x[0] for x in moveOrdering]
                 self.moveOrderTable[hashed] = sortedMoves
                 return sortedMoves
-
-        # s = list(board.legal_moves)
-        # orderedMoves = orderMoves(board, s, self.color)
-        # print(s)
-        # print(orderedMoves)
-        # quit()
 
         global positionsEvaluated
         positionsEvaluated = 0
@@ -379,4 +406,8 @@ class Player:
         print(
             f'        |___ {bestMove}, took {"{:,}".format(t.time()-startTime)} secs, {"{:,}".format(positionsEvaluated)} positions evaluated')
         print()
+
+        # global memory
+        # memory.entry(self.transpositionTable)
+
         return bestMove

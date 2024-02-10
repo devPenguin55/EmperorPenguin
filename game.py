@@ -8,6 +8,10 @@ import ultimateMover as player1
 import ultimateMover as player2
 from stockfish import Stockfish
 
+import chess.svg
+# requires internet?
+# chess.svg.piece(chess.Piece.from_symbol("R"))
+
 stockfishPath = 'stockfish-windows-x86-64-avx2.exe'
 STOCKFISH = True
 
@@ -131,8 +135,9 @@ def whiteAccuracyFromPgn(game):
         board.push(move)
 
     # accuracy
-    whiteAccuracy = 100 - (accurateMoves / totalMoves) * 100 
+    whiteAccuracy = 100 - (accurateMoves / totalMoves) * 100
     return whiteAccuracy
+
 
 print('Assembling accuracy...')
 whiteAccuracy = whiteAccuracyFromPgn(game)

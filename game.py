@@ -4,16 +4,15 @@ import cProfile
 import chess
 import chess.pgn
 import time
-import ultimateMover as player1
-import ultimateMover as player2
+import ultimateMover as player
 from stockfish import Stockfish
 
-import chess.svg
+from chessboard import display
 # requires internet?
 # chess.svg.piece(chess.Piece.from_symbol("R"))
 
 stockfishPath = 'stockfish-windows-x86-64-avx2.exe'
-STOCKFISH = True
+STOCKFISH = not True
 
 stockfish = Stockfish(path=stockfishPath)
 
@@ -37,15 +36,19 @@ board2 = board.copy()
 p1_time = 1000
 p2_time = 1000
 start = time.time()
-p1 = player1.Player(board1, chess.WHITE, p1_time)
+p1 = player.Player(board1, chess.WHITE, p1_time)
 end = time.time()
 p1_time -= end-start
 
 if not STOCKFISH:
     start = time.time()
-    p2 = player2.Player(board2, chess.BLACK, p2_time)
+    p2 = player.Player(board2, chess.BLACK, p2_time)
     end = time.time()
     p2_time -= end-start
+
+
+displayBoard = display.start()
+
 
 legal_move = True
 movesDone = 0
@@ -73,6 +76,8 @@ while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
         board.push(move)
         node = node.add_variation(move)
         movesDone += 1
+        display.update(board.fen(), displayBoard)
+        time.sleep(1)
     else:
         legal_move = False
     print(f'\n{str(game.mainline_moves())}\n\n')
@@ -103,7 +108,11 @@ elif board.is_fivefold_repetition():
 print(game)
 print(f'Survived {movesDone} moves')
 
+
 pr.disable()
+
+time.sleep(30)
+display.terminate()
 
 # import time as t
 # print('Stats coming in 10 seconds')

@@ -14,12 +14,13 @@ class memoryHandler():
     
     def entry(self, table):
         data = self.read().split('\n')
-        for i, hash in enumerate(table):
+        for hash in table:
             evaluation = table[hash]
-            # if f'{hash}:{evaluation}' not in data: # assume that where its placed, it wont add the same things.
-            self.f.write(f'{hash}:{evaluation}')
-            self.f.write('\n')
-            # print(f'{i}/{len(table)}')
+            if f'{hash}:{evaluation}' not in data: # assume that where its placed, it wont add the same things.
+                self.f.write(f'{hash}:{evaluation}')
+                self.f.write('\n')
+            else:
+                print("nonono")
 
     def initialize(self):
         table = {}
@@ -28,7 +29,7 @@ class memoryHandler():
             if line:
                 key, val = line.split(':')
                 table[int(key)] = float(val)
-        
+        print(table)
         return table
 
 memory = memoryHandler('transpositionTable.txt')
@@ -158,9 +159,9 @@ class Player:
         # when working on the evaluation function, clear the transposition table first, as to not mess with the evals and the board
         color = self.color
         from chess import polyglot
-        hashed = polyglot.zobrist_hash(board)
+        hashed = int(polyglot.zobrist_hash(board))
 
-        if hashed in self.transpositionTable:
+        if hashed in self.transpositionTable.keys():
             return self.transpositionTable[hashed]
         else:
 

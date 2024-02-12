@@ -12,7 +12,7 @@ from chessboard import display
 # chess.svg.piece(chess.Piece.from_symbol("R"))
 
 stockfishPath = 'stockfish-windows-x86-64-avx2.exe'
-STOCKFISH = not True
+STOCKFISH = True
 
 stockfish = Stockfish(path=stockfishPath)
 
@@ -33,8 +33,8 @@ node = game
 board = chess.Board()
 board1 = board.copy()
 board2 = board.copy()
-p1_time = 1000
-p2_time = 1000
+p1_time = 10000
+p2_time = 10000
 start = time.time()
 p1 = player.Player(board1, chess.WHITE, p1_time)
 end = time.time()

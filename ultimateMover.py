@@ -19,8 +19,7 @@ class memoryHandler():
             if f'{hash}:{evaluation}' not in data: # assume that where its placed, it wont add the same things.
                 self.f.write(f'{hash}:{evaluation}')
                 self.f.write('\n')
-            else:
-                print("nonono")
+
 
     def initialize(self):
         table = {}
@@ -29,7 +28,7 @@ class memoryHandler():
             if line:
                 key, val = line.split(':')
                 table[int(key)] = float(val)
-        print(table)
+        # print(table)
         return table
 
 memory = memoryHandler('transpositionTable.txt')
@@ -130,6 +129,7 @@ class Player:
         }
         self.moveOrderTable = {}
         global MemoryError
+        self.transpositionTable = {}
         self.transpositionTable = memory.initialize()
         # print(self.transpositionTable)
     def bookMove(self, state):
@@ -152,7 +152,7 @@ class Player:
             best = []
             for entry in entries:
                 best.append(entry.move)
-            return best[0]
+            # return best[0]
             return r.choice(best) if best else False
 
     def evaluationFunction(self, board):
@@ -221,8 +221,8 @@ class Player:
 
             score = material*5 + locationScore*1.1 + kingDist*5
             self.transpositionTable[hashed] = score
-            global memory
-            memory.entry({hashed:score})
+            # global memory
+            # memory.entry({hashed:score})
             return score
 
     def flattenBoard(self, board):
@@ -402,7 +402,7 @@ class Player:
         startTime = t.time()
         print('Latest Version')
         # given that we have x time left, allocate at most x secs, and have at most y depth
-        bestMove = iterativeDeepening(timeAllocation=5, depthLimit=10)
+        bestMove = iterativeDeepening(timeAllocation=20, depthLimit=10)
 
         print(
             f'        |___ {bestMove}, took {"{:,}".format(t.time()-startTime)} secs, {"{:,}".format(positionsEvaluated)} positions evaluated')

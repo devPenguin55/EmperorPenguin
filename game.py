@@ -7,19 +7,21 @@ import time
 import ultimateMover as player
 from stockfish import Stockfish
 
+
+DISPLAY = False
 from chessboard import display
 # requires internet?
-# chess.svg.piece(chess.Piece.from_symbol("R"))
+# chess.svg.piece(chess.Piece.from_symbol("R"z))
 
 stockfishPath = 'stockfish-windows-x86-64-avx2.exe'
-STOCKFISH = True
+STOCKFISH = not True
 
 stockfish = Stockfish(path=stockfishPath)
 
 
 def stockfishMove(board, stockfish, timeLimit):
     stockfish.set_fen_position(board.fen())
-    moveInfo = stockfish.get_best_move_time(timeLimit)
+    moveInfo = stockfish.get_best_move_time(0.1)
     bestMove = moveInfo
     return chess.Move.from_uci(bestMove)
 
@@ -47,7 +49,8 @@ if not STOCKFISH:
     p2_time -= end-start
 
 
-displayBoard = display.start()
+if DISPLAY:
+    displayBoard = display.start()
 
 
 legal_move = True
@@ -76,8 +79,9 @@ while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
         board.push(move)
         node = node.add_variation(move)
         movesDone += 1
-        display.update(board.fen(), displayBoard)
-        time.sleep(1)
+        if DISPLAY:
+            display.update(board.fen(), displayBoard)
+        # time.sleep(1)
     else:
         legal_move = False
     print(f'\n{str(game.mainline_moves())}\n\n')
@@ -112,7 +116,8 @@ print(f'Survived {movesDone} moves')
 pr.disable()
 
 time.sleep(30)
-display.terminate()
+if DISPLAY:
+    display.terminate()
 
 # import time as t
 # print('Stats coming in 10 seconds')

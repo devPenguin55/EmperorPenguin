@@ -2,42 +2,9 @@ import random as r
 import chess
 import time as t
 
-# simple memory handler that stores data from the transposition tables into memory
-
-
-class memoryHandler():
-    def __init__(self, filePath):
-        self.f = open(filePath, 'r+')
-        self.f.seek(0)
-
-    def read(self):
-        self.f.seek(0)
-        return self.f.read()
-
-    def entry(self, table):
-        data = self.read().split('\n')
-        for hash in table:
-            evaluation = table[hash]
-            # assume that where its placed, it wont add the same things.
-            if f'{hash}:{evaluation}' not in data:
-                self.f.write(f'{hash}:{evaluation}')
-                self.f.write('\n')
-
-    def initialize(self):
-        table = {}
-        data = self.read().split('\n')
-        for line in data:
-            if line:
-                key, val = line.split(':')
-                table[int(key)] = float(val)
-        # print(table)
-        return table
-
-
-memory = memoryHandler('transpositionTable.txt')
-
 
 class Player:
+
     def __init__(self, board, color, t):
         self.BENCHMARK = False
         self.color = color
@@ -132,11 +99,7 @@ class Player:
             chess.PAWN: 100,
         }
         self.moveOrderTable = {}
-        global MemoryError
         self.transpositionTable = {}
-        self.transpositionTable = memory.initialize()
-        # print(self.transpositionTable)
-        self.maxQuiesceDepth = 3
 
     def bookMove(self, state):
         # state -> board
@@ -158,29 +121,18 @@ class Player:
             best = []
             for entry in entries:
                 best.append(entry.move)
-            # return best[0]
+            return best[0]
             return r.choice(best) if best else False
 
     def evaluationFunction(self, board):
-        # when working on the evaluation function, clear the transposition table first, as to not mess with the evals and the board
         color = self.color
-
-        if board.is_checkmate():
-            if board.turn != color:
-                return float('inf')
-            else:
-                return float('-inf')
-        elif board.is_game_over():
-            return 0 
-        
-
         from chess import polyglot
-        hashed = int(polyglot.zobrist_hash(board))
+        hashed = polyglot.zobrist_hash(board)
 
-        if hashed in self.transpositionTable.keys():
+        if hashed in self.transpositionTable:
             return self.transpositionTable[hashed]
         else:
-            
+
             def pieceCount(piece, color):
                 # get amt of pieces on the board that are a certain color and type
                 return len(board.pieces(piece, color))
@@ -237,8 +189,6 @@ class Player:
 
             score = material*5 + locationScore*1.1 + kingDist*5
             self.transpositionTable[hashed] = score
-            # global memory
-            # memory.entry({hashed:score})
             return score
 
     def flattenBoard(self, board):
@@ -310,7 +260,7 @@ class Player:
                     moveOrdering.append((move, moveEstimate))
                     state.pop()
 
-                if all(score == 0 for _, score in moveOrdering):
+                if all(score == 0 for move, score in moveOrdering):
                     # if the score of each move was 0, then there's nothing to sort
                     # skip sorting and just return what we have
                     return moves
@@ -319,59 +269,23 @@ class Player:
                 self.moveOrderTable[hashed] = sortedMoves
                 return sortedMoves
 
+        # s = list(board.legal_moves)
+        # orderedMoves = orderMoves(board, s, self.color)
+        # print(s)
+        # print(orderedMoves)
+        # quit()
+
         global positionsEvaluated
         positionsEvaluated = 0
 
-        
-
-        def quiescence(state, a, b, depth):
-            stand = self.evaluationFunction(state)
-            if depth == self.maxQuiesceDepth:
-                return stand
-            if stand >= b:
-                return b
-            if a < stand:
-                a = stand
-
-            legalMoves = state.legal_moves
-            if legalMoves:
-                for move in legalMoves:
-                    state.push(move)
-                    score = -quiescence(state, -b, -a, depth+1)
-                    state.pop()
-
-                    if score >= b:
-                        return b
-                    if score > a:
-                        a = score
-            else:
-                return stand
-            return a
-        
-        THRESHOLD = 500
-        
-        def minimax(state, depth, agent, a, b, startTime, maxTime, prevEval):
+        def minimax(state, depth, agent, a, b, startTime, maxTime):
             if t.time()-startTime > maxTime:
                 # if we have exceeded the time given, raise an error
                 1/0
             global positionsEvaluated
-            if depth == 1:
-                prevEval = self.evaluationFunction(state)
-
             if depth == 0 or state.is_game_over():
                 positionsEvaluated += 1
-                curEval = self.evaluationFunction(state)
-                if prevEval == None:
-                    return curEval
-                
-                if abs(prevEval-curEval) <= THRESHOLD:
-                    return curEval
-                else:
-                    # print(prevEval, curEval)
-                    return quiescence(state, a, b, 0)
-                
-                
-
+                return self.evaluationFunction(board)
 
             if agent == self.color:
                 best = float('-inf')
@@ -381,7 +295,7 @@ class Player:
                     positionsEvaluated += 1
 
                     state.push(move)
-                    val = minimax(state, depth-1, not agent, a, b, startTime, maxTime, prevEval)
+                    val = minimax(state, depth-1, not agent, a, b, startTime, maxTime)
                     state.pop()
 
                     best = max(best, val)
@@ -399,7 +313,7 @@ class Player:
                     positionsEvaluated += 1
 
                     state.push(move)
-                    val = minimax(state, depth-1, not agent, a, b, startTime, maxTime, prevEval)
+                    val = minimax(state, depth-1, not agent, a, b, startTime, maxTime)
                     state.pop()
 
                     best = min(best, val)
@@ -425,7 +339,7 @@ class Player:
 
             for move in board.legal_moves:
                 board.push(move)
-                val = minimax(board, wantedDepth-1, not self.color, a, b, st, endTime, prevEval=None)
+                val = minimax(board, wantedDepth-1, not self.color, a, b, st, endTime)
                 board.pop()
 
                 if val > bestVal:
@@ -445,10 +359,9 @@ class Player:
             lastTime = t.time()
             while t.time()-startedTime < timeAllocation and curDepth <= depthLimit:
                 try:
-                    bestMoveFound = searchFromRoot(
-                        curDepth, startedTime, timeAllocation)
+                    bestMoveFound = searchFromRoot(curDepth, startedTime, timeAllocation)
                     print(
-                        f'   |___ Iterative Deepening - depth {curDepth}, {bestMoveFound}, took {t.time()-lastTime}s, cum {t.time()-startedTime}s')
+                    f'   |___ Iterative Deepening - depth {curDepth}, {bestMoveFound}, took {t.time()-lastTime}s, cum {t.time()-startedTime}s')
                     lastTime = t.time()
                     curDepth += 1
                 except ZeroDivisionError:
@@ -466,8 +379,4 @@ class Player:
         print(
             f'        |___ {bestMove}, took {"{:,}".format(t.time()-startTime)} secs, {"{:,}".format(positionsEvaluated)} positions evaluated')
         print()
-
-        # global memory
-        # memory.entry(self.transpositionTable)
-
         return bestMove

@@ -14,7 +14,7 @@ from chessboard import display
 # chess.svg.piece(chess.Piece.from_symbol("R"z))
 
 stockfishPath = 'stockfish-windows-x86-64-avx2.exe'
-STOCKFISH = not True
+STOCKFISH = False
 
 stockfish = Stockfish(path=stockfishPath)
 

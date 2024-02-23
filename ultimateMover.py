@@ -118,8 +118,8 @@ class Player:
             return best
 
     def evaluationFunction(self, state, agent):
-        # color = self.color
-        color = not agent
+        color = self.color
+        # color = not agent
         from chess import polyglot
         hashed = polyglot.zobrist_hash(state)
 
@@ -182,7 +182,7 @@ class Player:
                     locationScore += table[index]
 
             unprotectedPieces = []
-    
+
             for pieceType in chess.PIECE_TYPES:
                 for square in state.pieces(pieceType, color):
                     # check if piece attacked by any opponent pieces
@@ -192,7 +192,7 @@ class Player:
                             unprotectedPieces.append(self.pieces[pieceType])
             unprotectedPieces = sum(unprotectedPieces)
             # score = material*1.5 + locationScore*1 + kingDist*2 + unprotectedPieces*3
-            score = material*1.2 + locationScore*2 + kingDist*5 + unprotectedPieces*3
+            score = material*1.2 + locationScore*2 + kingDist*5 + unprotectedPieces*2*(1 if agent == color else -1)
             self.transpositionTable[hashed] = score
             return score
 
@@ -281,7 +281,7 @@ class Player:
 
             if depth == 0 or state.is_game_over():
                 positionsEvaluated += 1
-                return -1 * self.evaluationFunction(state, agent)
+                return self.evaluationFunction(state, agent)
 
             if agent == self.color:
                 best = float('-inf')

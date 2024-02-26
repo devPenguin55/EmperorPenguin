@@ -14,14 +14,14 @@ from chessboard import display
 # chess.svg.piece(chess.Piece.from_symbol("R"z))
 
 stockfishPath = 'stockfish-windows-x86-64-avx2.exe'
-STOCKFISH = not False
+STOCKFISH = True
 
 stockfish = Stockfish(path=stockfishPath)
 
 
 def stockfishMove(board, stockfish, timeLimit):
     stockfish.set_fen_position(board.fen())
-    moveInfo = stockfish.get_best_move_time(1)
+    moveInfo = stockfish.get_best_move_time(10)
     bestMove = moveInfo
     return chess.Move.from_uci(bestMove)
 

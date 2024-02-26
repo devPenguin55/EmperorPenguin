@@ -88,12 +88,12 @@ class Player:
             self.kingEndGame.reverse()
 
         self.pieces = {
-            chess.KING: 20_000,
-            chess.QUEEN: 900,
-            chess.ROOK: 500,
-            chess.BISHOP: 330,
-            chess.KNIGHT: 320,
-            chess.PAWN: 100,
+            chess.KING: 200,
+            chess.QUEEN: 90,
+            chess.ROOK: 50,
+            chess.BISHOP: 30,
+            chess.KNIGHT: 30,
+            chess.PAWN: 10,
         }
         self.stringToPiece = {
             'p': chess.PAWN,
@@ -117,9 +117,7 @@ class Player:
                 # print(entry.move, entry.weight, entry.learn)
             return best
 
-    def evaluationFunction(self, state, agent):
-        color = self.color
-        # color = not agent
+    def evaluationFunction(self, state):
         from chess import polyglot
         hashed = polyglot.zobrist_hash(state)
 
@@ -136,8 +134,8 @@ class Player:
                 # in chess module, white is True, black is False
                 # therefore, to get the next agent, just do not agent
                 # True -> False, False -> True
-                material += self.pieces[piece] * (pieceCount(piece, color) -
-                                                  pieceCount(piece, not color))
+                material += self.pieces[piece] * (pieceCount(piece, self.color) -
+                                                  pieceCount(piece, not self.color))
 
             m = state.piece_map()
             flattenedBoard = self.flattenBoard(state)
@@ -181,18 +179,22 @@ class Player:
                     table = mappedPieces[currentPiece]
                     locationScore += table[index]
 
-            unprotectedPieces = []
-
-            for pieceType in chess.PIECE_TYPES:
-                for square in state.pieces(pieceType, color):
-                    # check if piece attacked by any opponent pieces
-                    if state.is_attacked_by(not color, square):
-                        # check if no defending pieces on current square
-                        if not state.is_attacked_by(color, square):
-                            unprotectedPieces.append(self.pieces[pieceType])
-            unprotectedPieces = sum(unprotectedPieces)
-            # score = material*1.5 + locationScore*1 + kingDist*2 + unprotectedPieces*3
-            score = material*1.2 + locationScore*2 + kingDist*5 + unprotectedPieces*2*(1 if agent == color else -1)
+            # unprotectedPieces = []
+            # defendingPieces = []
+            # for pieceType in chess.PIECE_TYPES:
+            #     for square in state.pieces(pieceType, color):
+            #         # check if piece attacked by any opponent pieces
+            #         if state.is_attacked_by(not color, square):
+            #             # check if no defending pieces on current square
+            #             if not state.is_attacked_by(color, square):
+            #                 unprotectedPieces.append(self.pieces[pieceType])
+            #             else:
+            #                 # defending
+            #                 defendingPieces.append(self.pieces[pieceType])
+            # unprotectedPieces = sum(unprotectedPieces)
+            # defendingPieces = sum(defendingPieces)
+            score = material*3 + locationScore/10 + kingDist*0.5
+            # score = material*3 + locationScore/10 + kingDist*0.5 - unprotectedPieces*0.15 + defendingPieces*0.25
             self.transpositionTable[hashed] = score
             return score
 
@@ -281,7 +283,7 @@ class Player:
 
             if depth == 0 or state.is_game_over():
                 positionsEvaluated += 1
-                return self.evaluationFunction(state, agent)
+                return self.evaluationFunction(state)
 
             if agent == self.color:
                 best = float('-inf')
@@ -337,8 +339,7 @@ class Player:
 
             for move in boardCopy.legal_moves:
                 boardCopy.push(move)
-                val = minimax(boardCopy, wantedDepth-1,
-                              not self.color, a, b, st, endTime)
+                val = minimax(boardCopy, wantedDepth-1, not self.color, a, b, st, endTime)
                 boardCopy.pop()
 
                 if val > bestVal:

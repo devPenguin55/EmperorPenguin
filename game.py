@@ -7,7 +7,8 @@ import time
 import ultimateMover as player
 from stockfish import Stockfish
 
-
+# do state.pseudo_legal_moves for less time
+# if less time with that then switch else keep as .legal_moves
 DISPLAY = False
 from chessboard import display
 # requires internet?
@@ -15,6 +16,7 @@ from chessboard import display
 
 stockfishPath = 'stockfish-windows-x86-64-avx2.exe'
 STOCKFISH = True
+botSide = chess.WHITE
 
 stockfish = Stockfish(path=stockfishPath)
 
@@ -38,13 +40,13 @@ board2 = board.copy()
 p1_time = 10000
 p2_time = 10000
 start = time.time()
-p1 = player.Player(board1, chess.WHITE, p1_time)
+p1 = player.Player(board1, botSide, p1_time)
 end = time.time()
 p1_time -= end-start
 
 if not STOCKFISH:
     start = time.time()
-    p2 = player.Player(board2, chess.BLACK, p2_time)
+    p2 = player.Player(board2, not botSide, p2_time)
     end = time.time()
     p2_time -= end-start
 
@@ -57,7 +59,7 @@ legal_move = True
 movesDone = 0
 while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
     board_copy = board.copy()
-    if board.turn == chess.WHITE:
+    if board.turn == botSide:
         start = time.time()
         move = p1.move(board_copy, p1_time)
         end = time.time()
@@ -113,7 +115,7 @@ print(game)
 print(f'Survived {movesDone} moves')
 
 
-pr.disable()
+# pr.disable()
 
 time.sleep(30)
 if DISPLAY:
@@ -122,7 +124,7 @@ if DISPLAY:
 # import time as t
 # print('Stats coming in 10 seconds')
 # t.sleep(10)
-# pr.print_stats(sort='cumulative')
+pr.print_stats(sort='cumulative')
 
 
 def whiteAccuracyFromPgn(game):
@@ -156,3 +158,5 @@ def whiteAccuracyFromPgn(game):
 print('Assembling accuracy...')
 whiteAccuracy = whiteAccuracyFromPgn(game)
 print(f"White player (Bot) weird accuracy (dont trust): {whiteAccuracy:.2f}%")
+
+

@@ -5,7 +5,7 @@ import time as t
 
 class Player:
     def __init__(self, board, color, t):
-        self.color = color
+        self.color = color # doesn't matter, gets overwritten by board.trun when move
         self.pawns = [
             0,  0,  0,  0,  0,  0,  0,  0,
             50, 50, 50, 50, 50, 50, 50, 50,
@@ -104,6 +104,7 @@ class Player:
             'k': chess.KING
         }
         self.transpositionTable = {}
+        self.moveOrderTable = {}
 
     def bookMove(self, state):
         # state -> board
@@ -193,9 +194,10 @@ class Player:
             #                 defendingPieces.append(self.pieces[pieceType])
             # unprotectedPieces = sum(unprotectedPieces)
             # defendingPieces = sum(defendingPieces)
-            score = material*3 + locationScore/10 + kingDist*0.5
+            score = material*3 + locationScore/10 + kingDist*6
             # score = material*3 + locationScore/10 + kingDist*0.5 - unprotectedPieces*0.15 + defendingPieces*0.25
             self.transpositionTable[hashed] = score
+            
             return score
 
     def flattenBoard(self, board):
@@ -227,6 +229,9 @@ class Player:
         return boardAsList
 
     def move(self, board, timeLeft):
+        self.color = board.turn
+        if self.color == chess.WHITE:
+            print(self.color)
         import time as t
         # handle book moves
         move = self.bookMove(board)
@@ -287,7 +292,7 @@ class Player:
 
             if agent == self.color:
                 best = float('-inf')
-                legalMoves = state.legal_moves
+                legalMoves = state.pseudo_legal_moves
                 # legalMoves = orderMoves(state, legalMoves, agent)
                 for move in legalMoves:
                     positionsEvaluated += 1
@@ -305,8 +310,8 @@ class Player:
                         break
 
             else:
-                best = float('inf')
-                legalMoves = state.legal_moves
+                best = float('inf') 
+                legalMoves = state.pseudo_legal_moves
                 # legalMoves = orderMoves(state, legalMoves, agent)
                 for move in legalMoves:
                     positionsEvaluated += 1
@@ -337,7 +342,7 @@ class Player:
 
             a, b = float('-inf'), float('inf')
 
-            for move in boardCopy.legal_moves:
+            for move in boardCopy.pseudo_legal_moves:
                 boardCopy.push(move)
                 val = minimax(boardCopy, wantedDepth-1, not self.color, a, b, st, endTime)
                 boardCopy.pop()

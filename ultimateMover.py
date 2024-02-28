@@ -380,7 +380,7 @@ class Player:
         startTime = t.time()
         print('Latest Version')
         # given that we have x time left, allocate at most x secs, and have at most y depth
-        bestMove = iterativeDeepening(timeAllocation=5, depthLimit=10)
+        bestMove = iterativeDeepening(timeAllocation=30000, depthLimit=5)
 
         print(
             f'        |___ {bestMove}, took {"{:,}".format(t.time()-startTime)} secs, {"{:,}".format(positionsEvaluated)} positions evaluated')

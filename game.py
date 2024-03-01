@@ -88,7 +88,7 @@ while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
         legal_move = False
     print(f'\n{str(game.mainline_moves())}\n\n')
 
-pr.print_stats(sort='cumulative')
+# pr.print_stats(sort='cumulative')
 
 if not legal_move:
     if board.turn == chess.WHITE:
@@ -114,6 +114,9 @@ elif board.is_seventyfive_moves():
     print("Draw - 75 moves without capture/pawn advancement")
 elif board.is_fivefold_repetition():
     print("Draw - position repeated 5 times")
+
+print()
+
 print(game)
 print(f'Survived {movesDone} moves')
 

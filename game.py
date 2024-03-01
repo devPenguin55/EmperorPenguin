@@ -88,7 +88,7 @@ while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
         legal_move = False
     print(f'\n{str(game.mainline_moves())}\n\n')
 
-# pr.print_stats(sort='cumulative')
+pr.print_stats(sort='cumulative')
 
 if not legal_move:
     if board.turn == chess.WHITE:

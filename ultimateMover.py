@@ -350,6 +350,7 @@ class Player:
                         if nullMoveEstimate >= b:
                             # state.pop()
                             return nullMoveEstimate
+
             else:
                 best = float('inf') 
                 legalMoves = state.legal_moves
@@ -380,12 +381,12 @@ class Player:
                         if state.is_stalemate():
                             nullMoveEstimate -= 40
                         if state.is_checkmate():
-                            if state.turn == (not agent):
+                            if state.turn == (agent):
                                 nullMoveEstimate -= 1000
                             else:
                                 nullMoveEstimate += 1000
                         if state.is_check():
-                            if state.turn == (not agent):
+                            if state.turn == (agent):
                                 nullMoveEstimate -= 250
                             else:
                                 nullMoveEstimate += 250

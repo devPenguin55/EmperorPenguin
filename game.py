@@ -6,25 +6,33 @@ import chess.pgn
 import time
 import ultimateMover as player
 from stockfish import Stockfish
-
+from gameReader import getRandomGameState
+import random as r
 # do state.pseudo_legal_moves for less time
 # if less time with that then switch else keep as .legal_moves
 DISPLAY = False
 from chessboard import display
 # requires internet?
-# chess.svg.piece(chess.Piece.from_symbol("R"z))
+# chess.svg.piece(chess.Piece.from_symbol("R"))
 
 stockfishPath = 'stockfish-windows-x86-64-avx2.exe'
 STOCKFISH = True
 botSide = chess.WHITE
 
 stockfish = Stockfish(path=stockfishPath)
-
+# stockfish.set_skill_level(1) # 0-20 
+stockfish.set_elo_rating(1100)
 
 def stockfishMove(board, stockfish, timeLimit):
     stockfish.set_fen_position(board.fen())
-    moveInfo = stockfish.get_best_move_time(10)
+    # for the best move only
+    moveInfo = stockfish.get_best_move_time(1)
     bestMove = moveInfo
+
+
+    # for the top best moves - variation added
+    # moveInfos = stockfish.get_top_moves(5)
+    # bestMove = r.choice(moveInfos)['Move']
     return chess.Move.from_uci(bestMove)
 
 
@@ -40,7 +48,7 @@ board2 = board.copy()
 p1_time = 100000
 p2_time = 100000
 start = time.time()
-p1 = player.Player(board1, botSide, p1_time)
+p1 = player.Player(board1, botSide, p1_time, experiments=True)
 end = time.time()
 p1_time -= end-start
 
@@ -49,6 +57,15 @@ if not STOCKFISH:
     p2 = player.Player(board2, not botSide, p2_time)
     end = time.time()
     p2_time -= end-start
+
+
+# starts the game at a random place
+startMoveAmt = 0
+# new = getRandomGameState()
+# for move in new.mainline_moves():
+#     board.push(move)
+#     node = node.add_variation(move)
+#     startMoveAmt += 1
 
 
 if DISPLAY:
@@ -88,7 +105,9 @@ while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
         legal_move = False
     print(f'\n{str(game.mainline_moves())}\n\n')
 
-pr.print_stats(sort='cumulative')
+
+
+# pr.print_stats(sort='cumulative')
 
 if not legal_move:
     if board.turn == chess.WHITE:
@@ -118,8 +137,8 @@ elif board.is_fivefold_repetition():
 print()
 
 print(game)
-print(f'Survived {movesDone} moves')
-
+print(f'Survived {movesDone-startMoveAmt} moves')
+print(f'Random game moves done at {startMoveAmt//2}')
 
 # pr.disable()
 

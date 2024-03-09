@@ -20,8 +20,6 @@ STOCKFISH = True
 botSide = chess.WHITE
 
 stockfish = Stockfish(path=stockfishPath)
-# stockfish.set_skill_level(1) # 0-20 
-stockfish.set_elo_rating(1100)
 
 def stockfishMove(board, stockfish, timeLimit):
     stockfish.set_fen_position(board.fen())
@@ -146,39 +144,4 @@ print(f'Random game moves done at {startMoveAmt//2}')
 if DISPLAY:
     time.sleep(30)
     display.terminate()
-
-
-
-def whiteAccuracyFromPgn(game):
-    board = chess.Board()
-
-    enginePath = stockfishPath
-    engine = chess.engine.SimpleEngine.popen_uci(enginePath)
-
-    totalMoves = 0
-    accurateMoves = 0
-
-    for move in game.mainline_moves():
-        totalMoves += 1
-        evaluation = engine.analyse(board, chess.engine.Limit(time=0.1))
-        actualResult = game.headers["Result"]
-
-        # see if white's move was accurate
-        try:
-            if (evaluation["score"].relative.score() > 0) == ("1-0" in actualResult):
-                accurateMoves += 1
-        except:
-            pass
-
-        board.push(move)
-
-    # accuracy
-    whiteAccuracy = 100 - (accurateMoves / totalMoves) * 100
-    return whiteAccuracy
-
-
-print('Assembling accuracy...')
-whiteAccuracy = whiteAccuracyFromPgn(game)
-print(f"White player (Bot) weird accuracy (dont trust): {whiteAccuracy:.2f}%")
-
 

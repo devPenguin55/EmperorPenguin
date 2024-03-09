@@ -147,64 +147,40 @@ class Player:
                 'q': self.queen,
                 'k': kingGame
             }
-            material = 0
+            
+            pieceMap = state.piece_map()
+
+            def transformIndex(index):
+                # Calculate row and column in the bottom layout
+                row = index // 8
+                col = index % 8
+    
+                # Calculate row in the top layout
+                newRow = 7 - row
+    
+                # Calculate index in the top layout
+                newIndex = newRow * 8 + col
+    
+                return newIndex
+        
             locationScore = 0
-            
-            if self.experiments == False:
-                for square in chess.SQUARES:
-                    piece = state.piece_at(square)
-                    if piece is not None:
-                        pieceSymbol = piece.symbol()
-                        index = 8 * (7 - chess.square_rank(square)) + chess.square_file(square)
-                        if self.color == True and pieceSymbol == pieceSymbol.lower():
-                            side = -1
-                        elif self.color == False and pieceSymbol == pieceSymbol.upper():
-                            side = -1
-                        else:
-                            side = 1
+            material = 0
+            for index in pieceMap:
+                piece, index = str(pieceMap[index]), index
+                
+                if self.color == True and piece == piece.lower():
+                    side = -1
+                elif self.color == False and piece == piece.upper():
+                    side = -1
+                else:
+                    side = 1
 
-                        pieceChessType = self.stringToPiece[pieceSymbol.lower()]
-                        material += self.pieces[pieceChessType] * side
+                pieceChessType = self.stringToPiece[piece.lower()]
+                table = mappedPieces[piece.lower()]
+                if side == 1:
+                    locationScore += table[transformIndex(index)]
+                material += self.pieces[pieceChessType] * side
 
-                        table = mappedPieces[pieceSymbol.lower()]
-                        if side == 1:
-                            locationScore += table[index]
-                # print(material, locationScore)
-
-            else:
-                pieceMap = state.piece_map()
-
-                def transformIndex(index):
-                    # Calculate row and column in the bottom layout
-                    row = index // 8
-                    col = index % 8
-        
-                    # Calculate row in the top layout
-                    newRow = 7 - row
-        
-                    # Calculate index in the top layout
-                    newIndex = newRow * 8 + col
-        
-                    return newIndex
-            
-                locationScore = 0
-                material = 0
-                for index in pieceMap:
-                    piece, index = str(pieceMap[index]), index
-                    
-                    if self.color == True and piece == piece.lower():
-                        side = -1
-                    elif self.color == False and piece == piece.upper():
-                        side = -1
-                    else:
-                        side = 1
-
-                    pieceChessType = self.stringToPiece[piece.lower()]
-                    table = mappedPieces[piece.lower()]
-                    if side == 1:
-                        locationScore += table[transformIndex(index)]
-                    material += self.pieces[pieceChessType] * side
-                # print(material, locationScore)
             
             score = material*3 + locationScore/10 + kingDist*6
             # score = material*3 + locationScore/10 + kingDist*0.5
@@ -359,7 +335,7 @@ class Player:
                     state.push(nullMove)
 
                     # run a shallow depth search to see how good it was? instead of an evaluation on it           
-                    nullMoveEstimate = minimax(state, depth-1, not agent, -b, -b+1, startTime, maxTime)                
+                    nullMoveEstimate = minimax(state, depth-1, agent, a, b, startTime, maxTime)                
                     state.pop() 
 
                     if nullMoveEstimate >= b:
@@ -394,7 +370,7 @@ class Player:
                     state.push(nullMove)
 
                     # run a shallow depth search to see how good it was? instead of an evaluation on it           
-                    nullMoveEstimate = minimax(state, depth-1, not agent, -b, -b+1, startTime, maxTime)                
+                    nullMoveEstimate = minimax(state, depth-1, agent, a, b, startTime, maxTime)                
                     state.pop() 
 
                     if nullMoveEstimate >= b:
@@ -433,9 +409,11 @@ class Player:
             positionsEvaluated = 0
             bestVal = float('-inf')
             bestMove = None
-
             a, b = float('-inf'), float('inf')
-            for move in boardCopy.legal_moves:
+
+            orderedMoves = orderMoves(boardCopy, boardCopy.legal_moves, self.color)
+
+            for move in orderedMoves:
                 boardCopy.push(move)
                 val = minimax(boardCopy, wantedDepth-1, not self.color, a, b, st, endTime)
                 boardCopy.pop()
@@ -443,7 +421,6 @@ class Player:
                 if val > bestVal:
                     bestVal = val
                     bestMove = move
-
                 a = max(a, val)
 
                 if b <= a:
@@ -478,6 +455,7 @@ class Player:
             boardCopy = board.copy()
             bestMoveFound = None
             lastTime = t.time()
+
             while t.time()-startedTime < timeAllocation and curDepth <= depthLimit:
                 try:
                     # if self.experiments == False:
@@ -486,8 +464,7 @@ class Player:
                     # else:
                     #     bestMoveFound, curVal = searchFromRootWithPool(
                     #         curDepth, startedTime, timeAllocation, boardCopy)
-                    bestMoveFound, curVal = searchFromRoot(
-                                curDepth, startedTime, timeAllocation, boardCopy)
+                    bestMoveFound, curVal = searchFromRoot(curDepth, startedTime, timeAllocation, boardCopy)
                     print(
                         f'   |___ Iterative Deepening - depth {curDepth}, {bestMoveFound}, {curVal}, took {t.time()-lastTime}s, cum {t.time()-startedTime}s')
                     lastTime = t.time()
@@ -501,7 +478,7 @@ class Player:
 
 
         def timeFromState(state):
-            baseTime =  1.5 # 1.50
+            baseTime =  1.5 # 1.50 is what its supposed to be. given time/40 -> 60/40 = 1.5
             timeIncrement = 0.50
             # just from book moves is more time
             # doing bad is more time

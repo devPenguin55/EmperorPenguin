@@ -43,8 +43,8 @@ node = game
 board = chess.Board()
 board1 = board.copy()
 board2 = board.copy()
-p1_time = 100000
-p2_time = 100000
+p1_time = 60
+p2_time = 60
 start = time.time()
 p1 = player.Player(board1, botSide, p1_time, experiments=True)
 end = time.time()
@@ -102,7 +102,7 @@ while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
     else:
         legal_move = False
     print(f'\n{str(game.mainline_moves())}\n\n')
-
+    
 
 
 # pr.print_stats(sort='cumulative')

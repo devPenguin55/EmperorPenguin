@@ -2,16 +2,17 @@ import chess.engine
 import chess
 import chess.pgn
 import time
-import ultimateMover as player1
-import ultimateMover as player2
+import ultimateMover as player
 from stockfish import Stockfish
+from gameReader import getRandomGameState
 import os
 
+# is move ordering doing any good?
+
 stockfishPath = 'stockfish-windows-x86-64-avx2.exe'
-STOCKFISH = True
+STOCKFISH = not True
 
 stockfish = Stockfish(path=stockfishPath)
-stockfish.set_elo_rating(1100)
 
 def stockfishMove(board, stockfish, timeLimit):
     stockfish.set_fen_position(board.fen())
@@ -20,9 +21,12 @@ def stockfishMove(board, stockfish, timeLimit):
     return chess.Move.from_uci(bestMove)
 
 playerTypes = [True, False]
-
+if not STOCKFISH:
+    # true false   is the experiments
+    # white black
+    playerTypes = [True]
 for playerType in playerTypes:
-    games = 2
+    games = 50
     otherWins = 0
     botWins = 0
     draws = 0
@@ -32,18 +36,25 @@ for playerType in playerTypes:
         game = chess.pgn.Game()
         node = game
         board = chess.Board()
+
+        new = getRandomGameState()
+        for move in new.mainline_moves():
+            board.push(move)
+            node = node.add_variation(move)
+
+
         board1 = board.copy()
         board2 = board.copy()
-        p1_time = 1000
-        p2_time = 1000
+        p1_time = 60
+        p2_time = 60
         start = time.time()
-        p1 = player1.Player(board1, chess.WHITE, p1_time, experiments=playerType)
+        p1 = player.Player(board1, chess.WHITE, p1_time, experiments=playerType)
         end = time.time()
         p1_time -= end-start
 
         if not STOCKFISH:
             start = time.time()
-            p2 = player2.Player(board2, chess.BLACK, p2_time, experiments=False)
+            p2 = player.Player(board2, chess.BLACK, p2_time, experiments=not playerType)
             end = time.time()
             p2_time -= end-start
 

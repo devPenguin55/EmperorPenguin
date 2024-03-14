@@ -1,16 +1,17 @@
 import random as r
 import chess
 import time as t
-import requests
-import json
 
 from evaluation import evaluationFunction
 from moveOrderer import orderMoves
+from transpositionTable import TT, entry
+import settings
+
+chess.Board.__hash__ = chess.polyglot.zobrist_hash
 
 class Player:
-    def __init__(self, board, color, t, experiments=True):
-        self.color = board.turn
-        self.experiments = experiments
+    def __init__(self, board, color, t):
+        self.color = color
         self.justOutOfBook = False
         self.pawns = [
             0,  0,  0,  0,  0,  0,  0,  0,
@@ -110,8 +111,14 @@ class Player:
             'k': chess.KING
         }
         self.transpositionTable = {}
-        self.killers = []
-        self.availableTime = t
+        self.timeToThink = t/40
+        self.timeToThink = 5 # ONLY FOR HUMAN GAME - REMOVE IF NOT DOING A HUMAN GAME
+        
+
+        self.EXACT = 1
+        self.LOWERBOUND = 2
+        self.UPPERBOUND = 3
+        self.CHECKMATE = 9999999
 
     def bookMove(self, state:chess.Board):
         with chess.polyglot.open_reader("bookMoves.bin") as reader:
@@ -168,7 +175,7 @@ class Player:
             return a
         else:
             return b
-        
+    
     def minimax(self, state:chess.Board, depth, agent, a, b, startTime, maxTime):
         if t.time()-startTime > maxTime:
             # if we have exceeded the time given, raise an error
@@ -179,17 +186,15 @@ class Player:
 
         if depth == 0 or state.is_game_over():
             positionsEvaluated += 1
-            if self.experiments:
-                # res = self.quiesce(state, a, b, 0)
-                res = evaluationFunction(self, state)
-                return res
+            if settings.quiesce:
+                return self.quiesce(state, a, b, 0)
             else:
                 return evaluationFunction(self, state)
             # return evaluationFunction(self, state)
 
         if agent == self.color:
             # null move code
-            if depth > 1:
+            if depth > 1 and settings.nullMovePruning:
                 nullMove = chess.Move.null()
 
                 state.push(nullMove)
@@ -204,8 +209,11 @@ class Player:
                     return b
                     
             best = float('-inf')
-            legalMoves = orderMoves(self, state, state.legal_moves, agent)
-                
+            if settings.moveOrdering:
+                legalMoves = orderMoves(self, state, state.legal_moves, agent)
+            else:
+                legalMoves = state.legal_moves
+
             for move in legalMoves:
                 positionsEvaluated += 1
 
@@ -219,12 +227,11 @@ class Player:
                 a = max(a, val)
 
                 if b <= a:
-                    self.killers.append([move, state])
                     break
 
         else:
             # null move code
-            if depth > 1:
+            if depth > 1 and settings.nullMovePruning:
                 nullMove = chess.Move.null()
 
                 state.push(nullMove)
@@ -239,7 +246,10 @@ class Player:
                     return b
                     
             best = float('inf') 
-            legalMoves = orderMoves(self, state, state.legal_moves, agent)
+            if settings.moveOrdering:
+                legalMoves = orderMoves(self, state, state.legal_moves, agent)
+            else:
+                legalMoves = state.legal_moves
                 
             for move in legalMoves:
                 positionsEvaluated += 1
@@ -254,7 +264,6 @@ class Player:
                 b = min(b, val)
 
                 if b <= a:
-                    self.killers.append([move, state])
                     break                   
 
         return best
@@ -263,9 +272,9 @@ class Player:
         self.availableTime = timeLeft
         self.color = board.turn
         if self.color == chess.WHITE:
-            print(f'Bot as white with experiments set {self.experiments}')
+            print(f'Bot as white')
         else:
-            print(f'Bot as black with experiments set {self.experiments}')
+            print(f'Bot as black')
         # handle book moves
         move = self.bookMove(board)
         if move:
@@ -301,29 +310,32 @@ class Player:
                 a = max(a, val)
 
                 if b <= a:
-                    self.killers.append([move, boardCopy])
                     break
 
             return bestMove, bestVal
 
-
-        def iterativeDeepeningMinimax(timeAllocation, depthLimit):
+        def iterativeDeepening(timeAllocation, depthLimit):
             curDepth = 1
             startedTime = t.time()
             boardCopy = board.copy()
             bestMoveFound = None
             lastTime = t.time()
             
-            self.killers = []
 
             while t.time()-startedTime < timeAllocation and curDepth <= depthLimit:
                 try:
                     bestMoveFound, curVal = searchFromRootMinimax(curDepth, startedTime, timeAllocation, boardCopy)
-                    
+                    if curVal == -self.CHECKMATE:
+                        curVal = f'losing mate seen in {curDepth}'
+                    elif curVal == self.CHECKMATE:
+                        curVal = f'winning mate seen in {curDepth}'
                     print(
                         f'   |___ Iterative Deepening - depth {curDepth}, {bestMoveFound}, {curVal}, took {t.time()-lastTime}s, cum {t.time()-startedTime}s')
                     lastTime = t.time()
                     curDepth += 1
+                    if curVal == str(curVal):
+                        if 'mate seen in' in curVal:
+                            break
                 except ZeroDivisionError:
                     # when the zero division error traces down to here
                     # we have exceeded time limit, so halt the search where it is, and break out of loop
@@ -333,8 +345,8 @@ class Player:
 
         
         def timeFromState(state):
-            baseTime = self.availableTime/40 # 1.50 is what its supposed to be. given time/40 -> 60/40 = 1.5
-            timeIncrement = baseTime/3  # 1.5/3 = 0.5 
+            baseTime = self.timeToThink # 1.50 is what its supposed to be. given time/40 -> 60/40 = 1.5
+            timeIncrement = self.timeToThink/3  # 1.5/3 = 0.5 
             # just from book moves is more time
             # doing bad is more time
             stableness = evaluationFunction(self, state)
@@ -353,8 +365,8 @@ class Player:
         # given that we have x time left, allocate at most x secs, and have at most y depth
         timeToUse, stableness = timeFromState(board)
         # timeToUse = 20 # for when playing a human 
-
-        bestMove = iterativeDeepeningMinimax(timeAllocation=timeToUse, depthLimit=50)  
+        self.transpositionTable = {}
+        bestMove = iterativeDeepening(timeAllocation=timeToUse, depthLimit=50)  
         print(
             f'        |___ {bestMove}, took {"{:,}".format(t.time()-startTime)} secs, {"{:,}".format(positionsEvaluated)} positions evaluated')
         print("{:,}".format(len(self.transpositionTable)), 'entries in transposition table')

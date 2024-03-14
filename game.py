@@ -10,7 +10,7 @@ from gameReader import getRandomGameState
 import random as r
 # do state.pseudo_legal_moves for less time
 # if less time with that then switch else keep as .legal_moves
-DISPLAY = False
+DISPLAY = not False
 from chessboard import display
 # requires internet?
 # chess.svg.piece(chess.Piece.from_symbol("R"))
@@ -24,7 +24,7 @@ stockfish = Stockfish(path=stockfishPath)
 def stockfishMove(board, stockfish, timeLimit):
     stockfish.set_fen_position(board.fen())
     # for the best move only
-    moveInfo = stockfish.get_best_move_time(1)
+    moveInfo = stockfish.get_best_move_time(10)
     bestMove = moveInfo
 
 
@@ -43,10 +43,10 @@ node = game
 board = chess.Board()
 board1 = board.copy()
 board2 = board.copy()
-p1_time = 60
-p2_time = 60
+p1_time = 6000
+p2_time = 6000
 start = time.time()
-p1 = player.Player(board1, botSide, p1_time, experiments=True)
+p1 = player.Player(board1, botSide, p1_time)
 end = time.time()
 p1_time -= end-start
 

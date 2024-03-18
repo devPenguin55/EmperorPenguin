@@ -110,10 +110,12 @@ class Player:
             'q': chess.QUEEN,
             'k': chess.KING
         }
-        self.transpositionTable = {}
+        self.transpositionTable = TT()
         self.timeToThink = t/40
-        self.timeToThink = 5 # ONLY FOR HUMAN GAME - REMOVE IF NOT DOING A HUMAN GAME
+        self.timeToThink = 1.5 # 5 IS ONLY FOR HUMAN GAME - REMOVE IF NOT DOING A HUMAN GAME
         
+
+        self.transpositionMatches = 0
 
         self.EXACT = 1
         self.LOWERBOUND = 2
@@ -180,7 +182,20 @@ class Player:
         if t.time()-startTime > maxTime:
             # if we have exceeded the time given, raise an error
             1/0
-            
+        origAlpha = a
+
+        ttEntry = self.transpositionTable.lookup(state)
+        if ttEntry is not None and ttEntry.depth >= depth:
+            self.transpositionMatches += 1
+            if ttEntry.flag == self.EXACT:
+                return ttEntry.value
+            elif ttEntry.flag == self.LOWERBOUND:
+                a = max(a, ttEntry.value)
+            elif ttEntry.flag == self.UPPERBOUND:
+                b = min(b, ttEntry.value)
+
+            if a >= b:
+                return ttEntry.value
 
         global positionsEvaluated
 
@@ -189,7 +204,9 @@ class Player:
             if settings.quiesce:
                 return self.quiesce(state, a, b, 0)
             else:
-                return evaluationFunction(self, state)
+                result = evaluationFunction(self, state)
+                self.transpositionTable.store(state, self.EXACT, depth, result)
+                return result
             # return evaluationFunction(self, state)
 
         if agent == self.color:
@@ -202,7 +219,7 @@ class Player:
                 positionsEvaluated += 1
 
                 # run a shallow depth search to see how good it was? instead of an evaluation on it           
-                nullMoveEstimate = self.minimax(state, depth-1, agent, a, b, startTime, maxTime)                
+                nullMoveEstimate = self.minimax(state, depth-1, agent, -b, -b+1, startTime, maxTime)                
                 state.pop() 
 
                 if nullMoveEstimate >= b:
@@ -239,7 +256,7 @@ class Player:
                 positionsEvaluated += 1
 
                 # run a shallow depth search to see how good it was? instead of an evaluation on it           
-                nullMoveEstimate = self.minimax(state, depth-1, agent, a, b, startTime, maxTime)                
+                nullMoveEstimate = self.minimax(state, depth-1, agent, -b, -b+1, startTime, maxTime)                
                 state.pop() 
 
                 if nullMoveEstimate >= b:
@@ -264,8 +281,15 @@ class Player:
                 b = min(b, val)
 
                 if b <= a:
-                    break                   
+                    break                  
 
+        if best <= origAlpha:
+            flag = self.UPPERBOUND
+        elif best >= b:
+            flag = self.LOWERBOUND
+        else:
+            flag = self.EXACT 
+        self.transpositionTable.store(state, flag, depth, best)        
         return best
      
     def move(self, board:chess.Board, timeLeft):
@@ -285,7 +309,7 @@ class Player:
 
         global positionsEvaluated
         positionsEvaluated = 0
-
+        
 
         # ply x
         # meaning it does 2 moves ahead - one for white, one for black
@@ -324,13 +348,15 @@ class Player:
 
             while t.time()-startedTime < timeAllocation and curDepth <= depthLimit:
                 try:
+                    self.transpositionMatches = 0
+
                     bestMoveFound, curVal = searchFromRootMinimax(curDepth, startedTime, timeAllocation, boardCopy)
                     if curVal == -self.CHECKMATE:
                         curVal = f'losing mate seen in {curDepth}'
                     elif curVal == self.CHECKMATE:
                         curVal = f'winning mate seen in {curDepth}'
                     print(
-                        f'   |___ Iterative Deepening - depth {curDepth}, {bestMoveFound}, {curVal}, took {t.time()-lastTime}s, cum {t.time()-startedTime}s')
+                        f'   |___ Iterative Deepening - depth {curDepth}, best move is {bestMoveFound}, {curVal} is eval, {self.transpositionMatches} tt matches, took {t.time()-lastTime}s, cum {t.time()-startedTime}s')
                     lastTime = t.time()
                     curDepth += 1
                     if curVal == str(curVal):
@@ -365,11 +391,11 @@ class Player:
         # given that we have x time left, allocate at most x secs, and have at most y depth
         timeToUse, stableness = timeFromState(board)
         # timeToUse = 20 # for when playing a human 
-        self.transpositionTable = {}
+        self.transpositionTable.clear()
         bestMove = iterativeDeepening(timeAllocation=timeToUse, depthLimit=50)  
         print(
             f'        |___ {bestMove}, took {"{:,}".format(t.time()-startTime)} secs, {"{:,}".format(positionsEvaluated)} positions evaluated')
-        print("{:,}".format(len(self.transpositionTable)), 'entries in transposition table')
+        print("{:,}".format(len(self.transpositionTable.table)), 'entries in transposition table')
         if stableness > 0:
             print('Bot thinks it is winning,', 'eval is', stableness)
         else:

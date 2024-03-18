@@ -1,4 +1,3 @@
-import io
 import chess.engine
 import cProfile
 import chess
@@ -6,7 +5,6 @@ import chess.pgn
 import time
 import ultimateMover as player
 from stockfish import Stockfish
-from gameReader import getRandomGameState
 import random as r
 # do state.pseudo_legal_moves for less time
 # if less time with that then switch else keep as .legal_moves
@@ -142,6 +140,5 @@ print(f'Random game moves done at {startMoveAmt//2}')
 
 
 if DISPLAY:
-    time.sleep(30)
     display.terminate()
 

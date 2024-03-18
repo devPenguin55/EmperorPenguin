@@ -71,7 +71,7 @@ def evaluationFunction(self, state:chess.Board):
         material += self.pieces[pieceChessType] * side
 
         
-    score = material*3 + locationScore/10 + kingDist*6
+    score = material*3 + locationScore/10 + kingDist*1.25
     # score = material*3 + locationScore/10 + kingDist*0.5
     
     if state.is_check():
@@ -90,7 +90,7 @@ def evaluationFunction(self, state:chess.Board):
         score += chess.BISHOP//2
 
     score /= self.pieces[chess.PAWN]
-    self.transpositionTable[state] = score
+    # self.transpositionTable[state] = score
     return score
     
 
@@ -178,4 +178,3 @@ def evaluationFunction(self, state:chess.Board):
 #         score /= self.pieces[chess.PAWN]
 #         self.transpositionTable[state] = score
 #         return score
-    

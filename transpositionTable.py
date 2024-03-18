@@ -11,9 +11,16 @@ class entry:
 class TT:
     def __init__(self):
         self.table = {}
-    
-    def store(self, state:chess.Board, flag, depth, value):
-        self.table[state] = entry(flag, depth, value)
 
-    def lookup(self, state:chess.Board):
-        return self.table.get(state, None)
+    def hashState(self, state):
+        return chess.polyglot.zobrist_hash(state)
+    
+    def store(self, state, flag, depth, value):
+        self.table[self.hashState(state)] = entry(flag, depth, value)
+        
+
+    def lookup(self, state):
+        return self.table.get(self.hashState(state), None)
+    
+    def clear(self):
+        self.table = {}

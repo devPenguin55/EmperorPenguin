@@ -8,7 +8,7 @@ from stockfish import Stockfish
 import random as r
 # do state.pseudo_legal_moves for less time
 # if less time with that then switch else keep as .legal_moves
-DISPLAY = not False
+DISPLAY = False
 from chessboard import display
 # requires internet?
 # chess.svg.piece(chess.Piece.from_symbol("R"))
@@ -98,6 +98,7 @@ while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
             display.update(board.fen(), displayBoard)
         # time.sleep(1)
     else:
+        print('illgal move was', move)
         legal_move = False
     print(f'\n{str(game.mainline_moves())}\n\n')
     

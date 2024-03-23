@@ -5,14 +5,18 @@ import time as t
 from evaluation import evaluationFunction
 from moveOrderer import orderMoves
 from transpositionTable import TT, entry
+from betterBoard import BetterBoard
 import settings
 
 chess.Board.__hash__ = chess.polyglot.zobrist_hash
 
 class Player:
     def __init__(self, board, color, t):
+        self.board = BetterBoard(board, color)
         self.color = color
         self.justOutOfBook = False
+        
+        self.bookMovesPlayed = 0
         self.pawns = [
             0,  0,  0,  0,  0,  0,  0,  0,
             50, 50, 50, 50, 50, 50, 50, 50,
@@ -126,11 +130,13 @@ class Player:
         with chess.polyglot.open_reader("bookMoves.bin") as reader:
             entries = list(reader.find_all(state))
             if entries:
-                return r.choice(entries).move # for injecting some variety to its openings
+                gottenMove = r.choice(entries).move # for injecting some variety to its openings
+                self.bookMovesPlayed += 1
+                return gottenMove 
             else:
                 return False
 
-    def quiesce(self, state:chess.Board, a, b, depth):
+    def quiesce(self, state:BetterBoard, a, b, depth):
         global positionsEvaluated
         standPat = evaluationFunction(self, state)
         if depth == 4:
@@ -147,7 +153,7 @@ class Player:
                 b = standPat
             
         captureMoves = []
-        for move in state.legal_moves:
+        for move in state.legal_move:
             if state.is_capture(move):
                 captureMoves.append(move)
 
@@ -178,13 +184,13 @@ class Player:
         else:
             return b
     
-    def minimax(self, state:chess.Board, depth, agent, a, b, startTime, maxTime):
+    def minimax(self, state:BetterBoard, depth, agent, a, b, startTime, maxTime):
         if t.time()-startTime > maxTime:
             # if we have exceeded the time given, raise an error
             1/0
         origAlpha = a
 
-        ttEntry = self.transpositionTable.lookup(state)
+        ttEntry = self.transpositionTable.lookup(state.moduleBoard)
         if ttEntry is not None and ttEntry.depth >= depth:
             self.transpositionMatches += 1
             if ttEntry.flag == self.EXACT:
@@ -199,13 +205,13 @@ class Player:
 
         global positionsEvaluated
 
-        if depth == 0 or state.is_game_over():
+        if depth == 0 or state.moduleBoard.is_game_over():
             positionsEvaluated += 1
             if settings.quiesce:
                 return self.quiesce(state, a, b, 0)
             else:
                 result = evaluationFunction(self, state)
-                self.transpositionTable.store(state, self.EXACT, depth, result)
+                self.transpositionTable.store(state.moduleBoard, self.EXACT, depth, result)
                 return result
             # return evaluationFunction(self, state)
 
@@ -227,9 +233,9 @@ class Player:
                     
             best = float('-inf')
             if settings.moveOrdering:
-                legalMoves = orderMoves(self, state, state.legal_moves, agent)
+                legalMoves = orderMoves(self, state, state.moduleBoard.legal_moves, agent)
             else:
-                legalMoves = state.legal_moves
+                legalMoves = state.moduleBoard.legal_moves
 
             for move in legalMoves:
                 positionsEvaluated += 1
@@ -264,9 +270,9 @@ class Player:
                     
             best = float('inf') 
             if settings.moveOrdering:
-                legalMoves = orderMoves(self, state, state.legal_moves, agent)
+                legalMoves = orderMoves(self, state, state.moduleBoard.legal_moves, agent)
             else:
-                legalMoves = state.legal_moves
+                legalMoves = state.moduleBoard.legal_moves
                 
             for move in legalMoves:
                 positionsEvaluated += 1
@@ -289,23 +295,29 @@ class Player:
             flag = self.LOWERBOUND
         else:
             flag = self.EXACT 
-        self.transpositionTable.store(state, flag, depth, best)        
+        self.transpositionTable.store(state.moduleBoard, flag, depth, best)        
         return best
      
-    def move(self, board:chess.Board, timeLeft):
+    def move(self, givenBoard:chess.Board, timeLeft):
+        self.board.update(givenBoard.copy())
         self.availableTime = timeLeft
-        self.color = board.turn
+
+        self.board.setColor(givenBoard.turn)
+        self.color = self.board.color
+
         if self.color == chess.WHITE:
             print(f'Bot as white')
         else:
             print(f'Bot as black')
+        
         # handle book moves
-        move = self.bookMove(board)
+        move = self.bookMove(self.board.moduleBoard)
         if move:
             print(f'Book move - {move}')
+            self.board.push(move)
             self.justOutOfBook = True
             return move
-            
+        
 
         global positionsEvaluated
         positionsEvaluated = 0
@@ -315,19 +327,20 @@ class Player:
         # meaning it does 2 moves ahead - one for white, one for black
         # do 2*x to get the full depth look ahead
 
-        def searchFromRootMinimax(wantedDepth, st, endTime, boardCopy:chess.Board):
+        def searchFromRootMinimax(wantedDepth, st, endTime, boardCopy:BetterBoard):
             global positionsEvaluated
             bestVal = float('-inf')
             bestMove = None
             a, b = float('-inf'), float('inf')
 
-            orderedMoves = orderMoves(self, boardCopy, boardCopy.legal_moves, self.color)
+            orderedMoves = orderMoves(self, boardCopy, boardCopy.moduleBoard.legal_moves, self.color)
 
             for move in orderedMoves:
                 boardCopy.push(move)
+                
                 val = self.minimax(boardCopy, wantedDepth-1, not self.color, a, b, st, endTime)
                 boardCopy.pop()
-
+                # print(move, val)
                 if val > bestVal:
                     bestVal = val
                     bestMove = move
@@ -335,13 +348,13 @@ class Player:
 
                 if b <= a:
                     break
-
+            # print('\n')
             return bestMove, bestVal
 
         def iterativeDeepening(timeAllocation, depthLimit):
             curDepth = 1
             startedTime = t.time()
-            boardCopy = board.copy()
+            boardCopy = self.board.copy()
             bestMoveFound = None
             lastTime = t.time()
             
@@ -351,16 +364,19 @@ class Player:
                     self.transpositionMatches = 0
 
                     bestMoveFound, curVal = searchFromRootMinimax(curDepth, startedTime, timeAllocation, boardCopy)
+                    
                     if curVal == -self.CHECKMATE:
-                        curVal = f'losing mate seen in {curDepth}'
+                        curVal = f'losing mate seen at depth {curDepth}'
                     elif curVal == self.CHECKMATE:
-                        curVal = f'winning mate seen in {curDepth}'
+                        curVal = f'winning mate seen at depth {curDepth}'
                     print(
                         f'   |___ Iterative Deepening - depth {curDepth}, best move is {bestMoveFound}, {curVal} is eval, {self.transpositionMatches} tt matches, took {t.time()-lastTime}s, cum {t.time()-startedTime}s')
+                
                     lastTime = t.time()
                     curDepth += 1
                     if curVal == str(curVal):
-                        if 'mate seen in' in curVal:
+                        if 'mate seen' in curVal:
+                            print(f'After {self.bookMovesPlayed} moves, stopped book moves')
                             break
                 except ZeroDivisionError:
                     # when the zero division error traces down to here
@@ -389,14 +405,14 @@ class Player:
         startTime = t.time()
         print('Latest Version')
         # given that we have x time left, allocate at most x secs, and have at most y depth
-        timeToUse, stableness = timeFromState(board)
+        timeToUse, stableness = timeFromState(self.board)
         # timeToUse = 20 # for when playing a human 
         self.transpositionTable.clear()
         bestMove = iterativeDeepening(timeAllocation=timeToUse, depthLimit=50)  
         print(
             f'        |___ {bestMove}, took {"{:,}".format(t.time()-startTime)} secs, {"{:,}".format(positionsEvaluated)} positions evaluated')
         print("{:,}".format(len(self.transpositionTable.table)), 'entries in transposition table')
-        if stableness > 0:
+        if stableness >= 0:
             print('Bot thinks it is winning,', 'eval is', stableness)
         else:
             print('Bot thinks it is losing,', 'eval is', stableness)
@@ -404,5 +420,5 @@ class Player:
         
 
         # once done iterative deepening, last move is still valid? like the canceled search is still okay
-
+        self.board.push(bestMove)
         return bestMove

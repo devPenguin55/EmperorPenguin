@@ -1,5 +1,5 @@
 # Emperor Penguin
-### A chess AI written in Python
+##### A chess AI written in Python
 
 - Minimax with alpha-beta pruning
 - Transposition table

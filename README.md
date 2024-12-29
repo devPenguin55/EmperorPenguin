@@ -1,2 +1,9 @@
-# best team for chess ai
-https://witeboard.com/27722cc0-bc9f-11ee-8733-e39768d45b67
+# Emperor Penguin
+A chess AI written in Python
+
+Minimax with alpha-beta pruning
+Transposition table
+Aspiration windows
+Strong evaluation function
+Opening book moves
+...and much more!

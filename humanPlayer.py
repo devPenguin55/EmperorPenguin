@@ -15,7 +15,7 @@ board2 = board.copy()
 p1_time = 1000
 p2_time = 1000
 start = time.time()
-p1 = player1.Player(board1, chess.WHITE, p1_time)
+p1 = player1.Player(board1, chess.BLACK, p1_time)
 end = time.time()
 p1_time -= end-start
 
@@ -24,7 +24,7 @@ legal_move = True
 movesDone = 0
 while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
     board_copy = board.copy()
-    if board.turn == chess.WHITE:
+    if board.turn == chess.BLACK:
         start = time.time()
         move = p1.move(board_copy, p1_time)
         end = time.time()
@@ -44,11 +44,19 @@ while p1_time > 0 and p2_time > 0 and not board.is_game_over() and legal_move:
             # print('\na b c d e f g h')
             move = input("User move: ")
             try:
-                board_copy.push_san(move)
-                break
+                # board_copy.push_san(move)
+                board_copy.push(chess.Move.from_uci(move)) 
+                if chess.Move.from_uci(move) in board.legal_moves:
+                    break
             except Exception as e:
                 print(e)
             print("\n")
+        if chess.Move.from_uci(move) in board.legal_moves:
+            board.push(chess.Move.from_uci(move))
+            node = node.add_variation(chess.Move.from_uci(move))
+            movesDone += 1
+        else:
+            legal_move = False
 
         end = time.time()
         p2_time -= end-start

@@ -1,34 +1,37 @@
 import chess
 import chess.polyglot as polyglot
+import boardAndPieceEvaluationHelpers
 from betterBoard import BetterBoard
+import settings
 
 chess.Board.__hash__ = chess.polyglot.zobrist_hash
 
 
-def evaluationFunction(self, state:BetterBoard):
-    agent = self.color # make it stay this way 
+def evaluationFunction(self, state:BetterBoard, forceAgent=None):
+    agent = self.color # make it stay this way + for itself good, - for itself bad   for minimax search setup
+    if forceAgent:
+        agent = forceAgent
     if state.moduleBoard.is_checkmate():
         if state.moduleBoard.turn == agent:
             return -self.CHECKMATE
         else:
             return self.CHECKMATE
-        
-    # check if in endgame 
-    inEndgame = False
-    # no queens
-    if state.moduleBoard.pieces(chess.QUEEN, agent) == 0 and state.moduleBoard.pieces(chess.QUEEN, not agent) == 0:
-        inEndgame = True
+    elif state.moduleBoard.is_game_over():
+        # draw -> stalemate, repetition, etc.
+        # this is unfavorable so we can evaluate as losing a rook (pretty bad)
+        return -state.pieces[chess.ROOK]
 
-    if not inEndgame:
-        kingDist = 0
-        kingGame = self.kingMiddleGame
-    else:
+
+    if state.phase == state.ENDGAME:
         # move king close to other king to get checkmate in endgame
         try:
             kingDist = 20 * (1/(chess.square_distance(state.moduleBoard.king(agent), state.moduleBoard.king(not agent))))
         except:
             kingDist = 0
         kingGame = self.kingEndGame
+    else:
+        kingDist = 0
+        kingGame = self.kingMiddleGame
 
     mappedPieces = {
         'p': self.pawns,
@@ -50,6 +53,8 @@ def evaluationFunction(self, state:BetterBoard):
         if state.moduleBoard.turn == agent:
             # bot is in check
             score -= chess.ROOK
+        else:
+            score += chess.PAWN * 2
 
     if len(state.moduleBoard.pieces(chess.BISHOP, agent)) == 2:
         score += chess.BISHOP//2
@@ -61,7 +66,18 @@ def evaluationFunction(self, state:BetterBoard):
     else:
         score += chess.BISHOP//2
 
+    score += len(list(state.moduleBoard.legal_moves))
+    state.moduleBoard.turn = not state.moduleBoard.turn**0.5 # square root the legal moves so that many legal move amounts rounds out
+    score -= len(list(state.moduleBoard.legal_moves))
+    state.moduleBoard.turn = not state.moduleBoard.turn**0.5
+
+    score += (boardAndPieceEvaluationHelpers.pawnStructureScore(state, agent) - boardAndPieceEvaluationHelpers.pawnStructureScore(state, not agent)) * 0.6 
+    score += (boardAndPieceEvaluationHelpers.overallPieceProtectionScore(state, agent) - boardAndPieceEvaluationHelpers.overallPieceProtectionScore(state, not agent)) * 5
+    score += (boardAndPieceEvaluationHelpers.passedPawnsScore(state, agent) - boardAndPieceEvaluationHelpers.passedPawnsScore(state, not agent)) * 1
+
+
     score /= self.pieces[chess.PAWN]
+
     # self.transpositionTable[state] = score
     return score
     

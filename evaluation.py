@@ -16,9 +16,11 @@ def evaluationFunction(self, state:BetterBoard, forceAgent=None):
             return -self.CHECKMATE
         else:
             return self.CHECKMATE
-    elif state.moduleBoard.is_game_over():
+    elif state.moduleBoard.is_game_over(claim_draw=True):
         # draw -> stalemate, repetition, etc.
-        # this is unfavorable so we can evaluate as losing a rook (pretty bad)
+        # this is unfavorable for both sides so we can evaluate as losing a rook 
+        # (incentivize choosing another set of moves that does not result in game over by a form of draw)
+    
         return -state.pieces[chess.ROOK]
 
 
@@ -46,34 +48,66 @@ def evaluationFunction(self, state:BetterBoard, forceAgent=None):
     locationScore = state.locationScore
     locationScore = 0
 
-    score = material*3 + locationScore/10 + kingDist*1.25
-    # score = material*5 + locationScore/10 + kingDist*0.5
+    score = material*3 + locationScore/5 + kingDist*1.5
+    # score = material*3 + locationScore/10 + kingDist*1.25
     
     if state.moduleBoard.is_check():
         if state.moduleBoard.turn == agent:
             # bot is in check
             score -= chess.ROOK
         else:
-            score += chess.PAWN * 2
-
+            score += chess.PAWN * 2   
+    
+    # bishop pair
     if len(state.moduleBoard.pieces(chess.BISHOP, agent)) == 2:
-        score += chess.BISHOP//2
+        score += state.pieces[chess.BISHOP] 
     else:
-        score -= chess.BISHOP//2
+        score -= state.pieces[chess.BISHOP]
 
     if len(state.moduleBoard.pieces(chess.BISHOP, not agent)) == 2:
-        score -= chess.BISHOP//2
+        score -= state.pieces[chess.BISHOP]
     else:
-        score += chess.BISHOP//2
+        score += state.pieces[chess.BISHOP]
 
-    score += len(list(state.moduleBoard.legal_moves))
-    state.moduleBoard.turn = not state.moduleBoard.turn**0.5 # square root the legal moves so that many legal move amounts rounds out
-    score -= len(list(state.moduleBoard.legal_moves))
-    state.moduleBoard.turn = not state.moduleBoard.turn**0.5
+    # # knight pair 
+    # if len(state.moduleBoard.pieces(chess.KNIGHT, agent)) == 2:
+    #     score += state.pieces[chess.KNIGHT] // 4
+    # else:
+    #     score -= state.pieces[chess.KNIGHT] // 4
+ 
+    # if len(state.moduleBoard.pieces(chess.KNIGHT, not agent)) == 2:
+    #     score -= state.pieces[chess.KNIGHT] // 4
+    # else:
+    #     score += state.pieces[chess.KNIGHT] // 4
 
-    score += (boardAndPieceEvaluationHelpers.pawnStructureScore(state, agent) - boardAndPieceEvaluationHelpers.pawnStructureScore(state, not agent)) * 0.6 
-    score += (boardAndPieceEvaluationHelpers.overallPieceProtectionScore(state, agent) - boardAndPieceEvaluationHelpers.overallPieceProtectionScore(state, not agent)) * 5
-    score += (boardAndPieceEvaluationHelpers.passedPawnsScore(state, agent) - boardAndPieceEvaluationHelpers.passedPawnsScore(state, not agent)) * 1
+    # # rook pair
+    # if len(state.moduleBoard.pieces(chess.ROOK, agent)) == 2:
+    #     score += state.pieces[chess.ROOK] // 2
+    # else:
+    #     score -= state.pieces[chess.ROOK] // 2
+ 
+    # if len(state.moduleBoard.pieces(chess.ROOK, not agent)) == 2:
+    #     score -= state.pieces[chess.ROOK] // 2
+    # else:
+    #     score += state.pieces[chess.ROOK] // 2
+
+
+    # # ! old mobility score, I suppose it is bad now
+    # # score += round(len(list(state.moduleBoard.legal_moves))**0.5, 1) # square root the legal moves so that many legal move amounts rounds out
+    # # state.moduleBoard.turn = not state.moduleBoard.turn
+    # # score -= round(len(list(state.moduleBoard.legal_moves))**0.5, 1)
+    # # state.moduleBoard.turn = not state.moduleBoard.turn
+
+    # if not state.moduleBoard.has_kingside_castling_rights(self.color):
+    #     score -= state.pieces[chess.ROOK] // 2
+    # if not state.moduleBoard.has_queenside_castling_rights(self.color):
+    #     score -= state.pieces[chess.ROOK] // 2 
+
+    # score += (boardAndPieceEvaluationHelpers.pawnStructureScore(state, agent) - boardAndPieceEvaluationHelpers.pawnStructureScore(state, not agent)) 
+    # score += (boardAndPieceEvaluationHelpers.overallPieceProtectionScore(state, agent) - boardAndPieceEvaluationHelpers.overallPieceProtectionScore(state, not agent))
+    # score += (boardAndPieceEvaluationHelpers.overallPieceForkScore(state, agent) - boardAndPieceEvaluationHelpers.overallPieceForkScore(state, not agent)) * 1                                 
+    # score += (boardAndPieceEvaluationHelpers.passedPawnsScore(state, agent) - boardAndPieceEvaluationHelpers.passedPawnsScore(state, not agent)) 
+    # score += (boardAndPieceEvaluationHelpers.mobilityScore(state, self.color) - boardAndPieceEvaluationHelpers.mobilityScore(state, not self.color))
 
 
     score /= self.pieces[chess.PAWN]

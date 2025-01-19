@@ -1,46 +1,50 @@
 import chess
 import numpy as np
 from betterBoard import BetterBoard
-import transpositionTable
+import transpositionTableNEW
 import settings
 chess.Board.__hash__ = chess.polyglot.zobrist_hash
 
 
-def orderMoves(self, state:BetterBoard, moves:chess.LegalMoveGenerator, agent, depth, pv, tt:transpositionTable.TT, killerMoves):
+def orderMoves(self, state: BetterBoard, moves: chess.LegalMoveGenerator, agent, depth, inQSearch=False):
+    ply = self.currentTopDepth - depth
+
     orderedMoves = list(moves)
     actualKillerMoves = []
     actualPvMoves = []
-    pvMoves = [i[0] for i in pv]
-    for move in orderedMoves:
-        if move in killerMoves:
-            # orderedMoves.remove(move)
 
+    if inQSearch:
+        ttEntry = self.qSearchTranspositionTable.lookup(state.moduleBoard)
+    else:
+        ttEntry = self.transpositionTable.lookup(state.moduleBoard)
+    if ttEntry and ttEntry.bestMove:
+        ttBestMove = [ttEntry.bestMove]
+    else:
+        ttBestMove = []
+
+    pvMoves = [i[0] for i in self.PV]
+    for move in orderedMoves:
+        if move in self.killers[ply]:
             actualKillerMoves.append(move)
         elif move in pvMoves:
-            # pvDepth = pv[pvMoves.index(move)][1]
-            # orderedMoves.remove(move)
             actualPvMoves.append(move)
 
-
-    temp = []
+    lessImportantMoves = []
     for move in orderedMoves:
         if move not in actualKillerMoves and move not in actualPvMoves:
             if state.moduleBoard.is_capture(move):
                 attacker = self.MVV_LVA_INDEX_CONVERSION[state.moduleBoard.piece_type_at(move.from_square)]
                 victim = self.MVV_LVA_INDEX_CONVERSION[state.moduleBoard.piece_type_at(move.to_square)]
-                if agent == self.color:
-                    score = self.MVV_LVA_TABLE[victim][attacker]
-                else:
-                    score = self.MVV_LVA_TABLE[victim][attacker]
-
+                score = self.MVV_LVA_TABLE[victim][attacker]
             else:
                 score = 0
-            temp.append((move, score))
-    temp.sort(key=lambda x: x[-1], reverse=True)
-    temp = [i[0] for i in temp]
+                # score = self.historyMoves[state.moduleBoard.piece_type_at(move.from_square)-1][move.to_square] >> 2
+            lessImportantMoves.append((move, score))
 
+    lessImportantMoves.sort(key=lambda x: x[-1], reverse=True)
+    lessImportantMoves = [i[0] for i in lessImportantMoves]
 
-    return actualKillerMoves + actualPvMoves + temp
+    return ttBestMove + actualKillerMoves + actualPvMoves + lessImportantMoves
 
 # def orderMoves(self, state:BetterBoard, moves, agent, depth):
 #     sortedMoves = np.empty((0, 2))
@@ -69,7 +73,7 @@ def orderMoves(self, state:BetterBoard, moves:chess.LegalMoveGenerator, agent, d
 #         sortedMoves = np.append(sortedMoves, np.array([[move, moveEstimate]]), axis=0)
 
 #         state.pop()
-            
+
 #     # if state.turn == self.color:
 #     #     return sortedMoves[sortedMoves[:,1].argsort()[::-1]][:,0]
 #     # else:

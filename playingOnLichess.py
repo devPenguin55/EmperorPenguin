@@ -1,6 +1,6 @@
 import chess
 import chess.pgn
-import ultimateMover as player
+import emperorPenguin as player
 import settings
 
 from selenium import webdriver
@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
     BOT = False
     useStockfish = False
-    turn = False  # True -> user first white, False -> bot first white
+    turn = True # False -> bot white, True -> bot black
 
     options = Options()
     options.add_argument("user-data-dir=C:\\Users\\aarav\\AppData\\Local\\Google\\Chrome\\User Data")
@@ -81,6 +81,7 @@ if __name__ == '__main__':
     driver = webdriver.Chrome(service=service, options=options)
 
     driver.get('https://lichess.org/analysis')
+    # driver.get('https://lichess.org/vLJDB3WO')
     driver.implicitly_wait(1)
 
 
@@ -88,6 +89,8 @@ if __name__ == '__main__':
 
 
     board = chess.Board()
+    for sanMove in [i.text for i in driver.find_elements(By.TAG_NAME, 'kwdb')]:
+        board.push_san(sanMove)
     board1 = board.copy()
     p1 = player.Player(board1, chess.WHITE, t=5000)  # playing chess.com bots - make the player be black, flip board to white being on bottom
     p2 = player.Player(board1, chess.BLACK, t=5000)
@@ -105,36 +108,49 @@ if __name__ == '__main__':
     coordinates = re.findall(r"'x': (\d+), 'y': (\d+)", inputData)
     coordinates = [(int(x), int(y)) for x, y in coordinates]
 
-    allXs = []
-    allYs = []
-    for x, y in coordinates:
-        allXs.append(x)
-        allYs.append(y)
-    allXs = list(set(allXs))
-    allYs = list(set(allYs))
-    allXs.sort()
-    allYs.sort()
-    xGap = allXs[1] - allXs[0]
-    yGap = allYs[1] - allYs[0]
-    firstSquare = (allXs[0], allYs[0])
+    # allXs = []
+    # allYs = []
+    # for x, y in coordinates:
+    #     allXs.append(x)
+    #     allYs.append(y)
+    # allXs = list(set(allXs))
+    # allYs = list(set(allYs))
+    # allXs.sort()
+    # allYs.sort()
+    # xGap = allXs[1] - allXs[0]
+    # yGap = allYs[1] - allYs[0]
+    # firstSquare = (allXs[0], allYs[0])
 
-    squareCoords = {}
-    for y in range(0, 8):
-        for x in range(0, 8):
-            squareCoords[(firstSquare[0]+xGap*x, firstSquare[1]+yGap*y)] = 'abcdefgh'[x]+'87654321'[y]
+    # squareCoords = {}
+    # for y in range(0, 8):
+    #     for x in range(0, 8):
+    #         squareCoords[(firstSquare[0]+xGap*x, firstSquare[1]+yGap*y)] = 'abcdefgh'[x]+'87654321'[y]
     # print(squareCoords)
 
     
     lastFen = board.fen()
 
     legal_move = True
-    while not board.is_game_over() and legal_move:
+    while not board.is_game_over(claim_draw=True) and legal_move:
         board_copy = board.copy()
         if turn == True:
             # user turn
             if not BOT:
-                curFen = grabLatestFen(lastFen)
-                board.set_fen(curFen)
+                if True:
+                    curFen = grabLatestFen(lastFen)
+                    board.set_fen(curFen)
+                else:
+                    st = t.time()
+                    while True:
+                        move = driver.find_element(By.CLASS_NAME, 'a1t').text
+                        # print(move)
+                        try:
+                            board.push_san(move)
+                            print('pushed', move)
+                            t.sleep(3)  
+                            break
+                        except:
+                            pass
             else:
                 if useStockfish:
                     stockfishMove = json.loads(requests.get(f'https://www.stockfish.online/api/s/v2.php?fen={board.fen().replace(' ', '%20')}&depth=3').content)['bestmove'].split(' ')[1]
@@ -160,6 +176,7 @@ if __name__ == '__main__':
                 move = move.uci()
 
                 driver.find_element(By.CLASS_NAME, 'ready').send_keys(move)
+                t.sleep(3)
             # except Exception as e:
             #     print(e)
             #     pass  

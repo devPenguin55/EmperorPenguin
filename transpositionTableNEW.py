@@ -6,17 +6,12 @@ import settings
 chess.Board.__hash__ = chess.polyglot.zobrist_hash
 
 class entry:
-    def __init__(self, flag, depth, value):
+    def __init__(self, flag, depth, value, bestMove, currentAge):
         self.flag = flag
         self.depth = depth
         self.value = value
-
-    def toDict(self):
-        return {'flag': self.flag, 'depth':self.depth, 'value':self.value}
-    
-    @staticmethod
-    def fromDict(data):
-        return entry(data['flag'], data['depth'], data['value'])
+        self.bestMove = bestMove
+        self.currentAge = currentAge
 
 class TT:
     def __init__(self, sharedMemory):
@@ -25,24 +20,24 @@ class TT:
     def hashState(self, state):
         return chess.polyglot.zobrist_hash(state)
     
-    def store(self, state, flag, depth, value):
+    def store(self, state, flag, depth, value, bestMove, currentAge):
         okayStore = False
         existingEntry = self.table.get(self.hashState(state), None)
         if existingEntry:
             # if this state exists in the table and the new entry has better depth, overwrite it
-            if depth >= existingEntry['depth']:
+            if depth >= existingEntry.depth:
                 okayStore = True
         else:
             okayStore = True
 
         if okayStore:
-            self.table[self.hashState(state)] = entry(flag, depth, value).toDict()
-        # self.table[self.hashState(state)] = entry(flag, depth, value).toDict()
+            self.table[self.hashState(state)] = entry(flag, depth, value, bestMove, currentAge)
         
 
-    def lookup(self, state):
-        result = self.table.get(self.hashState(state), None)
-        return entry.fromDict(result) if result else None
+    def lookup(self, state, isAlreadyHashed=False):
+        if isAlreadyHashed:
+            return self.table.get(state, None)
+        return self.table.get(self.hashState(state), None)
     
     def clear(self):
         self.table.clear()

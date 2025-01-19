@@ -122,7 +122,7 @@ class BetterBoard:
             'b': self.bishops,
             'r': self.rooks,
             'q': self.queen,
-            'k': self.kingMiddleGame  # adjust later to have both tables for kind IMPORTANT
+            'k': None  # adjust later to have both tables for kind IMPORTANT
         }
         if self.color == chess.BLACK:
             # black will invert the tables
@@ -177,19 +177,26 @@ class BetterBoard:
 
         # location calculation
         pieceMap = self.moduleBoard.piece_map()
+        
+        # recalculate phase
+        maxPieces = 32 # each piece of each color
+        minPieces = 2 # 2 kings of each color
 
-        def transformIndex(index):
-            # get row and column
-            row = index // 8
-            col = index % 8
+        boardPieces = 0
+        for color in [chess.WHITE, chess.BLACK]:
+            for pieceType in [chess.KING, chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT, chess.PAWN]:
+                boardPieces += len(self.moduleBoard.pieces(pieceType, color))
 
-            # get the new row
-            newRow = 7 - row
+        gameProgressionScore = (maxPieces - boardPieces) / (maxPieces - minPieces)
 
-            # find new index
-            newIndex = newRow * 8 + col
+        # * when recalculating, do not consider previous phases
+        if gameProgressionScore < settings.openingThreshold:
+            self.phase = self.OPENING
+        elif gameProgressionScore < settings.middleGameThreshold:
+            self.phase = self.MIDDLEGAME
+        else:
+            self.phase = self.ENDGAME
 
-            return newIndex
 
         self.locationScore = 0
         for index in pieceMap:
@@ -204,36 +211,25 @@ class BetterBoard:
 
             # pieceChessType = self.stringToPiece[piece.lower()]
             table = self.mappedPieces[piece.lower()]
-            self.locationScore += table[transformIndex(index)] * side
+            if table == None: # king table
+                if self.phase == self.ENDGAME:
+                    table = self.kingEndGame
+                else:
+                    table = self.kingMiddleGame
+            self.locationScore += table[self.transformIndex(index)] * side
 
-        # recalculate phase
-        maxPieces = 32 # each piece of each color
-        minPieces = 2 # 2 kings of each color
-
-        boardPieces = 0
-        for color in [chess.WHITE, chess.BLACK]:
-            for pieceType in [chess.KING, chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT, chess.PAWN]:
-                boardPieces += len(self.moduleBoard.pieces(pieceType, color))
-
-        gameProgressionScore = (maxPieces - boardPieces) / (maxPieces - minPieces)
-
-        if gameProgressionScore < settings.openingThreshold:
-            self.phase = self.OPENING
-        elif gameProgressionScore < settings.middleGameThreshold:
-            self.phase = self.MIDDLEGAME
-        else:
-            self.phase = self.ENDGAME
+        
 
     def transformIndex(self, index):
         # get row and column
-        row = index // 8
-        col = index % 8
+        row = index >> 3
+        col = index & 7
 
         # get the new row
         newRow = 7 - row
 
         # find new index
-        newIndex = newRow * 8 + col
+        newIndex = (newRow << 3) + col
 
         return newIndex
 
@@ -242,7 +238,6 @@ class BetterBoard:
     def setColor(self, color):
         self.color = color
         self.moduleBoard.turn = color
-
         self.recalculateEval()
 
 
@@ -256,6 +251,7 @@ class BetterBoard:
         # grab the start piece and convert it to a string for future dictionary lookups
         startPiece = self.moduleBoard.piece_at(move.from_square)
         startPieceString = str(startPiece).lower()
+        # print(startPiece, startPieceString, move, self.moduleBoard.fen())
 
         endPiece = self.moduleBoard.piece_at(move.to_square)
 
@@ -263,7 +259,7 @@ class BetterBoard:
 
         # handles the updating of the material from a perspective of the color of the board initialized
         if endPiece and self.moduleBoard.is_capture(move):
-
+            
             recalculatePhase = True
             # get the final piece that is getting captured
             
@@ -282,6 +278,11 @@ class BetterBoard:
             ########### location score updating
             # if a piece gets captured, its location score should be removed from the score
             capturedPieceTable = self.mappedPieces[endPieceString]
+            if capturedPieceTable is None:
+                if self.phase == self.ENDGAME:
+                    capturedPieceTable = self.kingEndGame
+                else:
+                    capturedPieceTable = self.kingMiddleGame
             
             if self.color != startPiece.color:
                 side = -1
@@ -296,9 +297,14 @@ class BetterBoard:
             self.materialAlteringMoveStack.append(0)
 
         ########  subtract the old piece scores of the current piece being moved
-           
         
+        # the phase might be off by 1 move, but that is okay
         table = self.mappedPieces[startPieceString]
+        if table == None: # king table
+            if self.phase == self.ENDGAME:
+                table = self.kingEndGame
+            else:
+                table = self.kingMiddleGame
 
         foundPieces = self.moduleBoard.pieces(self.pieceTypesFromString[startPieceString], self.moduleBoard.turn)
         for i in foundPieces: 
@@ -325,7 +331,6 @@ class BetterBoard:
         self.locationScore += finalAdjustLocationScore
         self.locationScoreAlteringMoveStack.append(finalAdjustLocationScore)
 
-
         if recalculatePhase:
             # recalculate phase
             maxPieces = 32 # each piece of each color
@@ -338,18 +343,17 @@ class BetterBoard:
 
             gameProgressionScore = (maxPieces - boardPieces) / (maxPieces - minPieces)
 
+            # * when recalculating, do not consider previous phases
             if gameProgressionScore < settings.openingThreshold:
-                if self.phase == self.OPENING:
-                    self.phase = self.OPENING
+                self.phase = self.OPENING
             elif gameProgressionScore < settings.middleGameThreshold:
-                if self.phase == self.OPENING:
-                    self.phase = self.MIDDLEGAME
+                self.phase = self.MIDDLEGAME
             else:
-                if self.phase == self.MIDDLEGAME:
-                    self.phase = self.ENDGAME
+                self.phase = self.ENDGAME
+        
         
     
-    def pop(self):
+    def pop(self): 
         materialChange = self.materialAlteringMoveStack.pop()
         self.material -= materialChange
         self.locationScore -= self.locationScoreAlteringMoveStack.pop()
@@ -368,6 +372,7 @@ class BetterBoard:
 
             gameProgressionScore = (maxPieces - boardPieces) / (maxPieces - minPieces)
 
+            # * when recalculating, do not consider previous phases
             if gameProgressionScore < settings.openingThreshold:
                 self.phase = self.OPENING
             elif gameProgressionScore < settings.middleGameThreshold:

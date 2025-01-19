@@ -9,9 +9,6 @@ def getRandomGameState():
         while not choice.strip():
             choice = r.choice(lines)
 
-
-        board = chess.Board()
-
         game = chess.pgn.read_game(io.StringIO(choice))
         return game
     
